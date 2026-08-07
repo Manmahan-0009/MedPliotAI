@@ -31,6 +31,10 @@ import { API_BASE_URL } from "@/lib/api";
 import DoctorSidebar, { DoctorTabType } from "@/components/layout/DoctorSidebar";
 import DoctorTopbar from "@/components/layout/DoctorTopbar";
 import ClinicalIntelligenceReport, { ClinicalIntelligenceData } from "@/components/clinical/ClinicalIntelligenceReport";
+import UpcomingAppointmentsWidget from "@/components/dashboard/UpcomingAppointmentsWidget";
+import ClinicalTasksWidget from "@/components/dashboard/ClinicalTasksWidget";
+import ActivityFeedWidget from "@/components/dashboard/ActivityFeedWidget";
+import PatientQueueWidget from "@/components/dashboard/PatientQueueWidget";
 
 function DoctorDashboardContent() {
   const searchParams = useSearchParams();
@@ -42,6 +46,12 @@ function DoctorDashboardContent() {
   const [collapsed, setCollapsed] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [toastMsg, setToastMsg] = useState("");
+
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(""), 3500);
+  };
 
   // Data Loading States
   const [dashboardData, setDashboardData] = useState<DoctorDashboard | null>(null);
@@ -73,7 +83,16 @@ function DoctorDashboardContent() {
   const audioChunksRef = useRef<Blob[]>([]);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Initial Data Fetch
+  // Initial Data Fetch & 10s Live Polling
+  const refreshDashboardData = async () => {
+    try {
+      const data = await doctorService.getDashboard();
+      setDashboardData(data);
+    } catch (err) {
+      console.error("Dashboard refresh error:", err);
+    }
+  };
+
   useEffect(() => {
     let isMounted = true;
     setLoading(true);
@@ -102,7 +121,14 @@ function DoctorDashboardContent() {
       if (isMounted) setLoading(false);
     });
 
-    return () => { isMounted = false; };
+    const pollInterval = setInterval(() => {
+      if (isMounted) refreshDashboardData();
+    }, 10000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(pollInterval);
+    };
   }, []);
 
   // Theme Toggle Handler
@@ -348,106 +374,61 @@ function DoctorDashboardContent() {
                     })}
                   </div>
 
-                  {/* 2 Column Main Section */}
+                  {/* 2 Column Main Interactive Widgets Grid */}
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Left 2 Cols: Recent Activity & Today's Patients */}
-                    <div className="lg:col-span-2 space-y-6">
-                      {/* Today's Patients Queue */}
-                      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-xs">
-                        <div className="flex items-center justify-between mb-4">
-                          <div>
-                            <h3 className="font-bold text-slate-900 dark:text-white text-base">Active Patient Queue</h3>
-                            <p className="text-xs text-slate-500">Patients scheduled or awaiting clinical documentation</p>
-                          </div>
-                          <button onClick={() => setActiveTab("patients")} className="text-xs font-bold text-blue-600 hover:underline">
-                            View All Patients →
-                          </button>
-                        </div>
-
-                        <div className="space-y-3">
-                          {dashboardData?.todays_patients?.slice(0, 4).map((p, idx) => (
-                            <div
-                              key={idx}
-                              onClick={() => {
-                                setSelectedPatient(patients.find(pt => pt.patient_id === p.patient_id) || null);
-                                setActiveTab("patients");
-                              }}
-                              className="p-3.5 rounded-xl border border-slate-100 dark:border-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800/50 flex items-center justify-between cursor-pointer transition-all"
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-900/40 text-blue-600 font-bold text-sm flex items-center justify-center border border-blue-100">
-                                  {p.first_name[0]}{p.last_name[0]}
-                                </div>
-                                <div>
-                                  <div className="text-sm font-bold text-slate-800 dark:text-white">{p.first_name} {p.last_name}</div>
-                                  <div className="text-xs text-slate-500 flex items-center gap-2">
-                                    <span>MRN: {p.patient_id}</span>
-                                    <span>•</span>
-                                    <span>{p.gender || "Male"}, {p.age || 28} yrs</span>
-                                  </div>
-                                </div>
-                              </div>
-                              <span className="px-3 py-1 bg-blue-50 dark:bg-blue-950/40 text-blue-600 text-xs font-semibold rounded-lg border border-blue-100">
-                                Start Consultation
-                              </span>
-                            </div>
-                          ))}
-                        </div>
+                    {/* Left 2 Cols: Active Patient Queue & Recent Activity Feed */}
+                    <div className="lg:col-span-2 space-y-6 flex flex-col">
+                      <div className="h-[420px]">
+                        <PatientQueueWidget
+                          queue={(dashboardData as any)?.patient_queue || []}
+                          onRefresh={refreshDashboardData}
+                          onSelectPatient={(pid) => {
+                            const match = patients.find(p => p.patient_id === pid || p.first_name.includes(pid));
+                            if (match) setSelectedPatient(match);
+                            setActiveTab("patients");
+                          }}
+                          onStartConsultation={() => setActiveTab("consultation")}
+                          onShowToast={showToast}
+                        />
                       </div>
 
-                      {/* Recent Activity Timeline */}
-                      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-xs">
-                        <h3 className="font-bold text-slate-900 dark:text-white text-base mb-4">Recent Activity Feed</h3>
-                        <div className="space-y-4">
-                          {dashboardData?.recent_activity?.map((act) => (
-                            <div key={act.id} className="flex items-start gap-3 text-xs">
-                              <div className="w-2 h-2 rounded-full bg-blue-600 mt-1.5 shrink-0" />
-                              <div className="flex-1">
-                                <div className="flex items-center justify-between">
-                                  <span className="font-bold text-slate-800 dark:text-slate-200">{act.title}</span>
-                                  <span className="text-[10px] text-slate-400">{act.time}</span>
-                                </div>
-                                <p className="text-slate-500 mt-0.5">{act.description}</p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
+                      <div className="h-[380px]">
+                        <ActivityFeedWidget
+                          activities={(dashboardData as any)?.recent_activity || []}
+                          onSelectPatient={(pName) => {
+                            const match = patients.find(p => `${p.first_name} ${p.last_name}`.toLowerCase().includes(pName.toLowerCase()));
+                            if (match) setSelectedPatient(match);
+                            setActiveTab("patients");
+                          }}
+                          onOpenConsultation={() => setActiveTab("consultation")}
+                        />
                       </div>
                     </div>
 
-                    {/* Right Col: Upcoming Appointments & Tasks */}
-                    <div className="space-y-6">
-                      {/* Upcoming Appointments */}
-                      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-xs">
-                        <h3 className="font-bold text-slate-900 dark:text-white text-base mb-4">Upcoming Appointments</h3>
-                        <div className="space-y-3">
-                          {dashboardData?.upcoming_appointments?.map((app) => (
-                            <div key={app.id} className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
-                              <div>
-                                <div className="font-bold text-slate-800 dark:text-white">{app.patient_name}</div>
-                                <div className="text-slate-400 font-mono text-[10px]">{app.patient_id} • {app.type}</div>
-                              </div>
-                              <span className="font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/40 px-2.5 py-1 rounded-lg">
-                                {app.time}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
+                    {/* Right Col: Upcoming Appointments & Today's Clinical Tasks */}
+                    <div className="space-y-6 flex flex-col">
+                      <div className="h-[420px]">
+                        <UpcomingAppointmentsWidget
+                          appointments={(dashboardData as any)?.upcoming_appointments || []}
+                          onRefresh={refreshDashboardData}
+                          onSelectPatient={(pid) => {
+                            const match = patients.find(p => p.patient_id === pid);
+                            if (match) setSelectedPatient(match);
+                            setActiveTab("patients");
+                          }}
+                          onStartConsultation={() => setActiveTab("consultation")}
+                          onShowToast={showToast}
+                        />
                       </div>
 
-                      {/* Today's Action Tasks */}
-                      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-xs">
-                        <h3 className="font-bold text-slate-900 dark:text-white text-base mb-4">Today&apos;s Clinical Tasks</h3>
-                        <div className="space-y-2.5">
-                          {dashboardData?.todays_tasks?.map((t) => (
-                            <label key={t.id} className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer text-xs">
-                              <input type="checkbox" defaultChecked={t.completed} className="mt-0.5 rounded text-blue-600 border-slate-300" />
-                              <span className={`flex-1 font-medium ${t.completed ? "line-through text-slate-400" : "text-slate-700 dark:text-slate-200"}`}>
-                                {t.title}
-                              </span>
-                            </label>
-                          ))}
-                        </div>
+                      <div className="h-[380px]">
+                        <ClinicalTasksWidget
+                          tasks={(dashboardData as any)?.todays_tasks || []}
+                          aiRecommendations={(dashboardData as any)?.ai_recommended_tasks || []}
+                          onRefresh={refreshDashboardData}
+                          onSelectPatient={(pid) => setActiveTab("patients")}
+                          onShowToast={showToast}
+                        />
                       </div>
                     </div>
                   </div>
@@ -890,8 +871,6 @@ function DoctorDashboardContent() {
                   <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border space-y-4 text-xs">
                     <div className="font-bold border-b pb-2">Profile Information</div>
                     <div><span className="text-slate-400">Doctor Name:</span> Dr. Sarah Mitchell</div>
-                    <div><span className="text-slate-400">Department:</span> General Medicine</div>
-                    <div><span className="text-slate-400">Specialization:</span> Internal Medicine</div>
                     <div><span className="text-slate-400">Registration No:</span> REG-2026-9901</div>
                   </div>
                 </motion.div>
@@ -899,6 +878,21 @@ function DoctorDashboardContent() {
             </AnimatePresence>
           )}
         </main>
+
+        {/* Global Toast Notification Popup */}
+        <AnimatePresence>
+          {toastMsg && (
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              className="fixed bottom-6 right-6 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-800 text-xs font-bold z-50"
+            >
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>{toastMsg}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

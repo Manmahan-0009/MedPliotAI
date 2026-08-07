@@ -89,6 +89,39 @@ export const patientService = {
 export const doctorService = {
   getDashboard: (): Promise<DoctorDashboard> =>
     apiFetch("/api/doctor/dashboard"),
+
+  rescheduleAppointment: (appointment_id: string, new_slot: string, new_time?: string, new_date?: string): Promise<any> =>
+    apiFetch("/api/doctor/appointments/reschedule", {
+      method: "POST",
+      body: JSON.stringify({ appointment_id, new_slot, new_time, new_date })
+    }),
+
+  updateTaskStatus: (task_id: string, status: string, completed?: boolean): Promise<any> =>
+    apiFetch(`/api/doctor/tasks/${task_id}/status`, {
+      method: "POST",
+      body: JSON.stringify({ status, completed })
+    }),
+
+  getActivityFeed: (filter_type: string = "all"): Promise<any> =>
+    apiFetch(`/api/doctor/activity?filter_type=${encodeURIComponent(filter_type)}`),
+
+  reorderQueue: (queue_ids: string[]): Promise<any> =>
+    apiFetch("/api/doctor/queue/reorder", {
+      method: "POST",
+      body: JSON.stringify({ queue_ids })
+    }),
+
+  queueAction: (queue_id: string, action: string): Promise<any> =>
+    apiFetch(`/api/doctor/queue/${queue_id}/action`, {
+      method: "POST",
+      body: JSON.stringify({ action })
+    }),
+
+  updateLayoutPreferences: (widgets: any[]): Promise<any> =>
+    apiFetch("/api/doctor/layout-preferences", {
+      method: "POST",
+      body: JSON.stringify({ widgets })
+    })
 };
 
 // ── Consultation Service ──────────────────────────────────────────────────────
