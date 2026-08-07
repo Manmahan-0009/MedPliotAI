@@ -176,6 +176,25 @@ export default function ClinicalIntelligenceReport({
 
   const confidenceScore = report.overall_confidence?.score || report.ai_clinical_reasoning?.confidence_score || 92;
 
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadStatusMsg, setDownloadStatusMsg] = useState("");
+
+  const handleDownloadClick = async () => {
+    setIsDownloading(true);
+    setDownloadStatusMsg("Downloading Report...");
+    try {
+      await onDownloadPDF(report);
+      setDownloadStatusMsg("Report downloaded successfully!");
+      setTimeout(() => setDownloadStatusMsg(""), 3000);
+    } catch (err) {
+      console.error("PDF Download error:", err);
+      setDownloadStatusMsg("Download failed. Click to retry.");
+      setTimeout(() => setDownloadStatusMsg(""), 4000);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col h-full">
       {/* Header Banner */}
@@ -537,11 +556,26 @@ export default function ClinicalIntelligenceReport({
         )}
 
         <div className="flex items-center gap-3">
+          {downloadStatusMsg && (
+            <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+              {downloadStatusMsg}
+            </span>
+          )}
+
           <button
-            onClick={() => onDownloadPDF(report)}
-            className="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-xl flex items-center gap-2 transition-all shadow-sm"
+            onClick={handleDownloadClick}
+            disabled={isDownloading}
+            className="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-xl flex items-center gap-2 transition-all shadow-sm disabled:opacity-50"
           >
-            <Download className="w-4 h-4" /> Download PDF
+            {isDownloading ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" /> Downloading...
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4" /> Download PDF
+              </>
+            )}
           </button>
 
           <button

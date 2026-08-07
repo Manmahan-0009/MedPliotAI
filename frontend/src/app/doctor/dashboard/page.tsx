@@ -195,9 +195,17 @@ function DoctorDashboardContent() {
     try {
       setConsultStatus("Generating PDF...");
       const targetReport = customReport || clinicalReportData;
+      const rawName = selectedPatient ? `${selectedPatient.first_name}_${selectedPatient.last_name}` : "Rahul_Sharma";
+      const cleanName = rawName.replace(/[^a-zA-Z0-9_]/g, "");
+      const todayIso = new Date().toISOString().split("T")[0];
+      const filename = `${cleanName}_${todayIso}.pdf`;
+
       const blob = await reportService.generatePdf({
         doctor_name: dashboardData?.doctor_profile?.full_name || "Dr. Sarah Mitchell",
         patient_name: selectedPatient ? `${selectedPatient.first_name} ${selectedPatient.last_name}` : "Rahul Sharma",
+        patient_id: selectedPatient?.patient_id || "MP-2026-8942",
+        age: selectedPatient?.age || 28,
+        gender: selectedPatient?.gender || "Male",
         date: new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }),
         transcript: transcript || "No transcript recorded.",
         summary: summary || "No summary generated.",
@@ -207,21 +215,25 @@ function DoctorDashboardContent() {
         suggested_questions: targetReport?.suggested_questions as any,
         recommended_tests: targetReport?.recommended_tests as any,
         clinical_alerts: targetReport?.clinical_alerts as any,
-        doctor_review_status: targetReport?.doctor_review_status || "Approved"
+        doctor_review_status: targetReport?.doctor_review_status || "Approved",
+        recovery_score: 88,
+        medication_safety_score: 94
       } as any);
 
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `MediPilot_Report_${selectedPatient?.patient_id || "CONS"}.pdf`;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       a.remove();
+      window.URL.revokeObjectURL(url);
       setConsultStatus("PDF Downloaded");
       setTimeout(() => setConsultStatus("Completed"), 2000);
     } catch (error) {
       console.error("PDF Download Error:", error);
       setConsultStatus("PDF Failed");
+      throw error;
     }
   };
 

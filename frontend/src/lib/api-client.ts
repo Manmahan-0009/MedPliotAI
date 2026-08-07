@@ -77,6 +77,13 @@ export async function apiFetchBlob(
     ...(options?.headers as Record<string, string>),
   };
 
+  const hasBody = options?.body !== undefined && options?.body !== null;
+  const isFormData = typeof FormData !== "undefined" && options?.body instanceof FormData;
+
+  if (hasBody && !isFormData && !headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
+
   if (!options?.skipAuth) {
     const token = await getAccessToken();
     if (token) {

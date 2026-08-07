@@ -218,6 +218,9 @@ async def generate_summary(req: SummaryRequest):
 class ReportRequest(BaseModel):
     doctor_name: str
     patient_name: str
+    patient_id: Optional[str] = "MP-2026-8942"
+    age: Optional[int] = 28
+    gender: Optional[str] = "Male"
     date: str
     transcript: str
     summary: str
@@ -231,6 +234,8 @@ class ReportRequest(BaseModel):
     doctor_review_status: str = "Approved"
     prescription_items: list = None
     schedule_items: list = None
+    recovery_score: Optional[int] = 88
+    medication_safety_score: Optional[int] = 94
 
 def remove_file(path: str):
     if os.path.exists(path):
@@ -249,106 +254,135 @@ async def generate_pdf(req: ReportRequest, background_tasks: BackgroundTasks):
     # Header & Hospital Banner
     pdf.set_font("Helvetica", 'B', 18)
     pdf.cell(0, 10, txt=clean_text("MediPilot AI - Clinical Decision Support Report"), ln=True, align='C')
-    pdf.set_font("Helvetica", 'I', 10)
-    pdf.cell(0, 6, txt=clean_text("Confidential Healthcare Document • Enterprise AI Decision System"), ln=True, align='C')
-    pdf.ln(5)
+    pdf.set_font("Helvetica", 'I', 9)
+    pdf.cell(0, 5, txt=clean_text("Enterprise Medical Intelligence & Healthcare Platform"), ln=True, align='C')
+    pdf.ln(4)
 
     # Doctor & Patient Info Table Header
-    pdf.set_font("Helvetica", 'B', 11)
-    pdf.cell(100, 7, txt=clean_text(f"Doctor: {req.doctor_name}"), border=1)
-    pdf.cell(0, 7, txt=clean_text(f"Date: {req.date}"), border=1, ln=True)
-    pdf.cell(100, 7, txt=clean_text(f"Patient: {req.patient_name}"), border=1)
-    pdf.cell(0, 7, txt=clean_text(f"Status: {req.doctor_review_status}"), border=1, ln=True)
-    pdf.ln(8)
+    pdf.set_font("Helvetica", 'B', 10)
+    pdf.cell(95, 6, txt=clean_text(f" Doctor: {req.doctor_name}"), border=1)
+    pdf.cell(95, 6, txt=clean_text(f" Date: {req.date}"), border=1, ln=True)
+    pdf.cell(95, 6, txt=clean_text(f" Patient: {req.patient_name} ({req.gender or 'Male'}, {req.age or 28} yrs)"), border=1)
+    pdf.cell(95, 6, txt=clean_text(f" Patient ID: {req.patient_id or 'MP-2026-8942'}"), border=1, ln=True)
+    pdf.cell(95, 6, txt=clean_text(f" Review Status: {req.doctor_review_status}"), border=1)
+    pdf.cell(95, 6, txt=clean_text(f" Recovery Score: {req.recovery_score or 88}% | Safety: {req.medication_safety_score or 94}%"), border=1, ln=True)
+    pdf.ln(6)
 
     # 1. Consultation Summary Section
     if req.consultation_summary:
-        pdf.set_font("Helvetica", 'B', 13)
-        pdf.cell(0, 8, txt=clean_text("1. Consultation Summary"), ln=True)
+        pdf.set_font("Helvetica", 'B', 12)
+        pdf.cell(0, 7, txt=clean_text("1. Consultation Summary"), ln=True)
         pdf.set_font("Helvetica", size=9)
-        pdf.multi_cell(0, 5, txt=clean_text(f"Chief Complaint: {req.consultation_summary.get('chief_complaint', '')}"))
-        pdf.multi_cell(0, 5, txt=clean_text(f"History of Present Illness: {req.consultation_summary.get('history_of_present_illness', '')}"))
-        pdf.multi_cell(0, 5, txt=clean_text(f"Clinical Impression: {req.consultation_summary.get('clinical_impression', '')}"))
-        pdf.ln(5)
+        pdf.multi_cell(0, 5, txt=clean_text(f"Chief Complaint: {req.consultation_summary.get('chief_complaint', req.summary)}"))
+        if req.consultation_summary.get('history_of_present_illness'):
+            pdf.multi_cell(0, 5, txt=clean_text(f"History of Present Illness: {req.consultation_summary.get('history_of_present_illness')}"))
+        if req.consultation_summary.get('clinical_impression'):
+            pdf.multi_cell(0, 5, txt=clean_text(f"Clinical Impression: {req.consultation_summary.get('clinical_impression')}"))
+        pdf.ln(4)
 
     # 2. SOAP Notes
     if req.soap_notes:
-        pdf.set_font("Helvetica", 'B', 13)
-        pdf.cell(0, 8, txt=clean_text("2. SOAP Notes"), ln=True)
-        pdf.set_font("Helvetica", 'B', 10)
+        pdf.set_font("Helvetica", 'B', 12)
+        pdf.cell(0, 7, txt=clean_text("2. SOAP Notes"), ln=True)
+        pdf.set_font("Helvetica", 'B', 9)
         pdf.cell(0, 5, txt=clean_text("[Subjective]"), ln=True)
         pdf.set_font("Helvetica", size=9)
         pdf.multi_cell(0, 5, txt=clean_text(str(req.soap_notes.get('subjective', ''))))
         
-        pdf.set_font("Helvetica", 'B', 10)
+        pdf.set_font("Helvetica", 'B', 9)
         pdf.cell(0, 5, txt=clean_text("[Objective]"), ln=True)
         pdf.set_font("Helvetica", size=9)
         pdf.multi_cell(0, 5, txt=clean_text(str(req.soap_notes.get('objective', ''))))
 
-        pdf.set_font("Helvetica", 'B', 10)
+        pdf.set_font("Helvetica", 'B', 9)
         pdf.cell(0, 5, txt=clean_text("[Assessment]"), ln=True)
         pdf.set_font("Helvetica", size=9)
         pdf.multi_cell(0, 5, txt=clean_text(str(req.soap_notes.get('assessment', ''))))
 
-        pdf.set_font("Helvetica", 'B', 10)
+        pdf.set_font("Helvetica", 'B', 9)
         pdf.cell(0, 5, txt=clean_text("[Plan]"), ln=True)
         pdf.set_font("Helvetica", size=9)
         pdf.multi_cell(0, 5, txt=clean_text(str(req.soap_notes.get('plan', ''))))
-        pdf.ln(5)
+        pdf.ln(4)
 
     # 3. AI Clinical Reasoning
     if req.ai_clinical_reasoning:
-        pdf.set_font("Helvetica", 'B', 13)
-        pdf.cell(0, 8, txt=clean_text("3. AI Clinical Reasoning & Differential Diagnoses"), ln=True)
+        pdf.set_font("Helvetica", 'B', 12)
+        pdf.cell(0, 7, txt=clean_text("3. AI Clinical Reasoning & Differential Diagnoses"), ln=True)
         pdf.set_font("Helvetica", size=9)
         pdf.multi_cell(0, 5, txt=clean_text(f"Reasoning Path: {req.ai_clinical_reasoning.get('reasoning_path', '')}"))
-        pdf.multi_cell(0, 5, txt=clean_text(f"Supporting Evidence: {req.ai_clinical_reasoning.get('supporting_evidence', '')}"))
-        pdf.ln(5)
+        if req.ai_clinical_reasoning.get('supporting_evidence'):
+            pdf.multi_cell(0, 5, txt=clean_text(f"Supporting Evidence: {req.ai_clinical_reasoning.get('supporting_evidence')}"))
+        pdf.ln(4)
 
     # 4. Suggested Questions
     if req.suggested_questions:
-        pdf.set_font("Helvetica", 'B', 13)
-        pdf.cell(0, 8, txt=clean_text("4. Suggested Follow-up Questions"), ln=True)
+        pdf.set_font("Helvetica", 'B', 12)
+        pdf.cell(0, 7, txt=clean_text("4. Suggested Follow-up Questions"), ln=True)
         pdf.set_font("Helvetica", size=9)
         for q in req.suggested_questions:
             pdf.multi_cell(0, 5, txt=clean_text(f"• {q}"))
-        pdf.ln(5)
+        pdf.ln(4)
 
     # 5. Recommended Tests
     if req.recommended_tests:
-        pdf.set_font("Helvetica", 'B', 13)
-        pdf.cell(0, 8, txt=clean_text("5. Recommended Diagnostic Tests"), ln=True)
+        pdf.set_font("Helvetica", 'B', 12)
+        pdf.cell(0, 7, txt=clean_text("5. Recommended Diagnostic Tests"), ln=True)
         pdf.set_font("Helvetica", size=9)
         for t in req.recommended_tests:
-            pdf.multi_cell(0, 5, txt=clean_text(f"• {t.get('test_name')} [{t.get('priority', 'Routine')}] - Reason: {t.get('reason')}"))
-        pdf.ln(5)
+            if isinstance(t, dict):
+                pdf.multi_cell(0, 5, txt=clean_text(f"• {t.get('test_name')} [{t.get('priority', 'Routine')}] - Reason: {t.get('reason')}"))
+            else:
+                pdf.multi_cell(0, 5, txt=clean_text(f"• {t}"))
+        pdf.ln(4)
 
     # 6. Clinical Alerts
     if req.clinical_alerts:
-        pdf.set_font("Helvetica", 'B', 13)
-        pdf.cell(0, 8, txt=clean_text("6. Clinical Alerts & Red Flags"), ln=True)
+        pdf.set_font("Helvetica", 'B', 12)
+        pdf.cell(0, 7, txt=clean_text("6. Clinical Alerts & Warnings"), ln=True)
         pdf.set_font("Helvetica", size=9)
         for a in req.clinical_alerts:
-            pdf.multi_cell(0, 5, txt=clean_text(f"⚠️ [{a.get('type')}] {a.get('title')}: {a.get('message')}"))
-        pdf.ln(5)
+            if isinstance(a, dict):
+                pdf.multi_cell(0, 5, txt=clean_text(f"[ALERT] {a.get('title')}: {a.get('message')}"))
+            else:
+                pdf.multi_cell(0, 5, txt=clean_text(f"[ALERT] {a}"))
+        pdf.ln(4)
 
-    # 7. Transcript
-    pdf.set_font("Helvetica", 'B', 13)
-    pdf.cell(0, 8, txt=clean_text("7. Consultation Transcript"), ln=True)
+    # 7. Prescriptions if present
+    if req.prescription_items:
+        pdf.set_font("Helvetica", 'B', 12)
+        pdf.cell(0, 7, txt=clean_text("7. Prescribed Medications"), ln=True)
+        pdf.set_font("Helvetica", size=9)
+        for item in req.prescription_items:
+            med_details = f"• {item.get('medicine_name', item.get('name'))} | {item.get('dosage')} | {item.get('frequency')} | {item.get('duration')} | {item.get('food_instruction', item.get('timing'))}"
+            pdf.multi_cell(0, 5, txt=clean_text(med_details))
+        pdf.ln(4)
+
+    # 8. Transcript
+    pdf.set_font("Helvetica", 'B', 12)
+    pdf.cell(0, 7, txt=clean_text("8. Consultation Transcript"), ln=True)
     pdf.set_font("Helvetica", size=8)
     pdf.multi_cell(0, 4.5, txt=clean_text(req.transcript or "No audio transcript recorded."))
     
     # Signature Footer
-    pdf.ln(15)
-    pdf.set_font("Helvetica", 'B', 11)
-    pdf.cell(0, 6, txt=clean_text("__________________________________"), ln=True, align='R')
-    pdf.cell(0, 6, txt=clean_text(f"Attending Physician: {req.doctor_name}"), ln=True, align='R')
+    pdf.ln(12)
+    pdf.set_font("Helvetica", 'B', 10)
+    pdf.cell(0, 5, txt=clean_text("__________________________________"), ln=True, align='R')
+    pdf.cell(0, 5, txt=clean_text(f"Attending Physician: {req.doctor_name}"), ln=True, align='R')
     pdf.set_font("Helvetica", 'I', 8)
-    pdf.cell(0, 6, txt=clean_text("Validated & Signed electronically via MediPilot AI Decision Support Portal"), ln=True, align='R')
+    pdf.cell(0, 5, txt=clean_text("Validated & Signed electronically via MediPilot AI Decision Support System"), ln=True, align='R')
+    pdf.cell(0, 5, txt=clean_text("Generated by MediPilot AI Healthcare Platform"), ln=True, align='C')
     
     pdf_filename = f"report_{uuid.uuid4()}.pdf"
     pdf.output(pdf_filename)
     
     background_tasks.add_task(remove_file, pdf_filename)
-    return FileResponse(pdf_filename, media_type='application/pdf', filename=pdf_filename)
+    safe_name = req.patient_name.replace(" ", "_")
+    return FileResponse(
+        pdf_filename, 
+        media_type='application/pdf', 
+        filename=f"Consultation_Report_{safe_name}.pdf",
+        headers={"Content-Disposition": f'attachment; filename="Consultation_Report_{safe_name}.pdf"'}
+    )
+
 

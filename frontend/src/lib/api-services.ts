@@ -133,9 +133,22 @@ export const reportService = {
   generatePdf: (data: {
     doctor_name: string;
     patient_name: string;
+    patient_id?: string;
+    age?: number;
+    gender?: string;
     date: string;
     transcript: string;
     summary: string;
+    soap_notes?: any;
+    consultation_summary?: any;
+    ai_clinical_reasoning?: any;
+    suggested_questions?: any;
+    recommended_tests?: any;
+    clinical_alerts?: any;
+    doctor_review_status?: string;
+    recovery_score?: number;
+    medication_safety_score?: number;
+    prescription_items?: any[];
   }): Promise<Blob> =>
     apiFetchBlob("/api/report/pdf", {
       method: "POST",
