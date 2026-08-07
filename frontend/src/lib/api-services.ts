@@ -117,6 +117,11 @@ export const doctorService = {
       body: JSON.stringify({ action })
     }),
 
+  moveToTopQueue: (queue_id: string): Promise<any> =>
+    apiFetch(`/api/doctor/queue/${queue_id}/move-to-top`, {
+      method: "POST"
+    }),
+
   updateLayoutPreferences: (widgets: any[]): Promise<any> =>
     apiFetch("/api/doctor/layout-preferences", {
       method: "POST",

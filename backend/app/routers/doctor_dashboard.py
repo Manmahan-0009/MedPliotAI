@@ -227,8 +227,38 @@ class QueueReorderRequest(BaseModel):
 class QueueActionRequest(BaseModel):
     action: str  # "start" | "skip" | "complete" | "move_up" | "move_down"
 
-class LayoutPreferencesRequest(BaseModel):
-    widgets: List[dict]
+# Helper to generate live dynamic patient queue from database
+def build_dynamic_patient_queue(db: Session) -> List[dict]:
+    global STORE_PATIENT_QUEUE
+    patients = db.query(Patient).filter(Patient.status == PatientStatus.active).all()
+    if not patients:
+        return STORE_PATIENT_QUEUE
+
+    # Map database patients into queue records if custom reorder store is empty
+    if not STORE_PATIENT_QUEUE or len(STORE_PATIENT_QUEUE) < len(patients):
+        statuses = ["In Consultation", "Checked In", "Ready for Consultation", "Waiting", "Waiting"]
+        priorities = ["High", "Routine", "High", "Routine", "High"]
+        types = ["Follow-up", "Prescription Refill", "General Checkup", "Lab Report Review", "Follow-up"]
+        times = ["11:30 AM", "01:00 PM", "02:15 PM", "04:00 PM", "05:30 PM"]
+
+        dynamic_queue = []
+        for idx, p in enumerate(patients[:6]):
+            dynamic_queue.append({
+                "id": f"q-{p.patient_id}",
+                "queue_number": idx + 1,
+                "patient_id": p.patient_id,
+                "patient_name": f"{p.first_name} {p.last_name}",
+                "age": p.age or 28,
+                "gender": p.gender or "Male",
+                "waiting_time": f"{(idx + 1) * 6} mins",
+                "appointment_time": times[idx % len(times)],
+                "priority": priorities[idx % len(priorities)],
+                "type": types[idx % len(types)],
+                "status": statuses[idx % len(statuses)] if idx < len(statuses) else "Waiting"
+            })
+        STORE_PATIENT_QUEUE = dynamic_queue
+
+    return STORE_PATIENT_QUEUE
 
 
 @router.get("/dashboard")
@@ -277,6 +307,8 @@ def get_doctor_dashboard_data(db: Session = Depends(get_db)):
     completed_tasks_count = sum(1 for t in STORE_TASKS if t.get("completed"))
     total_tasks_count = len(STORE_TASKS)
 
+    active_queue = build_dynamic_patient_queue(db)
+
     return {
         "doctor_profile": {
             "full_name": "Dr. Sarah Mitchell",
@@ -315,7 +347,7 @@ def get_doctor_dashboard_data(db: Session = Depends(get_db)):
         "upcoming_appointments": STORE_APPOINTMENTS,
         "todays_tasks": STORE_TASKS,
         "ai_recommended_tasks": STORE_AI_RECOMMENDED_TASKS,
-        "patient_queue": STORE_PATIENT_QUEUE,
+        "patient_queue": active_queue,
         "layout_preferences": STORE_LAYOUT_PREFERENCES
     }
 
@@ -391,8 +423,8 @@ def get_activity_feed(filter_type: Optional[str] = "all"):
     return STORE_ACTIVITY_FEED
 
 @router.get("/queue")
-def get_patient_queue():
-    return STORE_PATIENT_QUEUE
+def get_patient_queue(db: Session = Depends(get_db)):
+    return build_dynamic_patient_queue(db)
 
 @router.post("/queue/reorder")
 def reorder_queue(req: QueueReorderRequest):
@@ -405,7 +437,24 @@ def reorder_queue(req: QueueReorderRequest):
             item["queue_number"] = idx + 1
             new_queue.append(item)
     STORE_PATIENT_QUEUE = new_queue
-    return {"message": "Queue reordered successfully", "queue": STORE_PATIENT_QUEUE}
+    return {"message": "Patient queue updated successfully.", "queue": STORE_PATIENT_QUEUE}
+
+@router.post("/queue/{queue_id}/move-to-top")
+def move_queue_to_top(queue_id: str):
+    global STORE_PATIENT_QUEUE
+    target_item = None
+    remaining = []
+    for q in STORE_PATIENT_QUEUE:
+        if q["id"] == queue_id:
+            target_item = q
+        else:
+            remaining.append(q)
+    if target_item:
+        STORE_PATIENT_QUEUE = [target_item] + remaining
+        for idx, q in enumerate(STORE_PATIENT_QUEUE):
+            q["queue_number"] = idx + 1
+        return {"message": "Patient queue updated successfully.", "queue": STORE_PATIENT_QUEUE}
+    return {"error": "Queue item not found"}
 
 @router.post("/queue/{queue_id}/action")
 def queue_action(queue_id: str, req: QueueActionRequest):
@@ -417,7 +466,7 @@ def queue_action(queue_id: str, req: QueueActionRequest):
                 q["status"] = "Completed"
             elif req.action == "skip":
                 q["status"] = "Skipped"
-            return {"message": f"Queue item action {req.action} applied", "queue_item": q}
+            return {"message": f"Patient queue updated successfully.", "queue_item": q}
     return {"error": "Queue item not found"}
 
 @router.get("/layout-preferences")
@@ -429,5 +478,6 @@ def update_layout_preferences(req: LayoutPreferencesRequest):
     global STORE_LAYOUT_PREFERENCES
     STORE_LAYOUT_PREFERENCES = {"widgets": req.widgets}
     return {"message": "Layout preferences saved successfully", "preferences": STORE_LAYOUT_PREFERENCES}
+
 
 
