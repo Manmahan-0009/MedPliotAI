@@ -91,7 +91,7 @@ export default function UpcomingAppointmentsWidget({
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col h-full">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col h-full font-sans">
       {/* Widget Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
@@ -129,23 +129,23 @@ export default function UpcomingAppointmentsWidget({
         ))}
       </div>
 
-      {/* Drag & Drop Time Slot Columns */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4 flex-1">
+      {/* Drag & Drop Time Slot Containers */}
+      <div className="space-y-3 flex-1 overflow-y-auto max-h-[320px] pr-1 custom-scrollbar">
         {(["morning", "afternoon", "evening"] as const).map(slot => (
           <div
             key={slot}
             onDragOver={e => e.preventDefault()}
             onDrop={e => handleDropSlot(e, slot)}
-            className="bg-slate-50/70 dark:bg-slate-800/30 rounded-xl p-3 border border-dashed border-slate-200 dark:border-slate-800 flex flex-col min-h-[140px]"
+            className="bg-slate-50/70 dark:bg-slate-800/30 rounded-xl p-3 border border-dashed border-slate-200 dark:border-slate-800"
           >
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center justify-between">
-              <span>{slot} Slot</span>
-              <span className="font-mono">
-                {slot === "morning" ? "9AM-12PM" : slot === "afternoon" ? "12PM-4PM" : "4PM-8PM"}
+            <div className="text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center justify-between">
+              <span className="capitalize">{slot} Slot</span>
+              <span className="font-mono text-[10px]">
+                {slot === "morning" ? "9AM - 12PM" : slot === "afternoon" ? "12PM - 4PM" : "4PM - 8PM"}
               </span>
             </div>
 
-            <div className="space-y-2 flex-1">
+            <div className="space-y-2">
               {appointments
                 .filter(a => (a.slot || "morning") === slot)
                 .map(app => (
@@ -155,31 +155,32 @@ export default function UpcomingAppointmentsWidget({
                     onDragStart={e => handleDragStart(e, app.id)}
                     className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs hover:border-blue-400 dark:hover:border-blue-500 transition-all cursor-grab active:cursor-grabbing group relative"
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-2">
-                        <GripVertical className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-500" />
-                        <div>
-                          <div className="font-bold text-slate-900 dark:text-white text-xs">{app.patient_name}</div>
-                          <div className="text-[10px] text-slate-400 font-mono">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <GripVertical className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-500 shrink-0" />
+                        <div className="min-w-0">
+                          <div className="font-bold text-slate-900 dark:text-white text-xs truncate">{app.patient_name}</div>
+                          <div className="text-[10px] text-slate-400 dark:text-slate-400 font-mono truncate">
                             {app.patient_id} • {app.type}
                           </div>
                         </div>
                       </div>
-                      <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-950/60 text-blue-600 font-bold text-[10px] rounded-md">
+                      <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 font-bold text-[10px] rounded-md shrink-0">
                         {app.time}
                       </span>
                     </div>
 
                     <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px]">
-                      <span className={`px-2 py-0.5 font-bold rounded ${
-                        app.status === "In Consultation" ? "bg-emerald-100 text-emerald-800" :
-                        app.status === "Checked In" ? "bg-purple-100 text-purple-800" : "bg-slate-100 text-slate-700"
+                      <span className={`px-2 py-0.5 font-bold text-[10px] rounded border ${
+                        app.status === "In Consultation" ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" :
+                        app.status === "Checked In" ? "bg-purple-500/20 text-purple-300 border-purple-500/30" :
+                        "bg-blue-500/20 text-blue-300 border-blue-500/30"
                       }`}>
                         {app.status}
                       </span>
                       <button
                         onClick={() => setSelectedApp(app)}
-                        className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-slate-400 hover:text-slate-700"
+                        className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-slate-400 hover:text-slate-200"
                       >
                         <MoreVertical className="w-3.5 h-3.5" />
                       </button>

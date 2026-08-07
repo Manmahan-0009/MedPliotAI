@@ -153,7 +153,7 @@ export default function PatientQueueWidget({
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col h-full">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col h-full font-sans">
       {/* Widget Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
@@ -168,7 +168,7 @@ export default function PatientQueueWidget({
       </div>
 
       {/* Queue List */}
-      <div className="space-y-3 flex-1 overflow-y-auto pr-1">
+      <div className="space-y-3 flex-1 overflow-y-auto max-h-[380px] pr-1 custom-scrollbar">
         {queue.length === 0 ? (
           <div className="h-full flex items-center justify-center text-slate-400 text-xs italic">
             No active patients in queue.
@@ -187,7 +187,7 @@ export default function PatientQueueWidget({
                   : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-blue-300"
               }`}
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 min-w-0">
                 <GripVertical className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-500 shrink-0" />
 
                 {/* Queue Number Badge */}
@@ -195,23 +195,24 @@ export default function PatientQueueWidget({
                   #{q.queue_number}
                 </div>
 
-                <div>
+                <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <span
                       onClick={() => onSelectPatient(q.patient_id)}
-                      className="font-bold text-xs text-slate-900 dark:text-white hover:text-blue-600 cursor-pointer"
+                      className="font-bold text-xs text-slate-900 dark:text-white hover:text-blue-600 cursor-pointer truncate"
                     >
                       {q.patient_name}
                     </span>
-                    <span className={`px-2 py-0.5 text-[10px] font-bold rounded ${
+                    <span className={`px-2 py-0.5 text-[10px] font-bold rounded shrink-0 ${
                       q.priority === "Emergency" ? "bg-red-600 text-white" :
-                      q.priority === "High" ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"
+                      q.priority === "High" ? "bg-red-500/20 text-red-300 border border-red-500/30" :
+                      "bg-blue-500/20 text-blue-300 border border-blue-500/30"
                     }`}>
                       {q.priority}
                     </span>
                   </div>
-                  <div className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-2 font-mono">
-                    <span>{q.gender || "Male"}, {q.age || 28} yrs</span>
+                  <div className="text-[11px] text-slate-400 dark:text-slate-400 mt-0.5 flex flex-wrap items-center gap-1.5 font-mono">
+                    <span>{q.gender || "Male"}, {q.age || 28}y</span>
                     <span>• Appt: {q.appointment_time}</span>
                     <span>• Wait: {q.waiting_time}</span>
                     <span>• {q.type}</span>
@@ -220,10 +221,12 @@ export default function PatientQueueWidget({
               </div>
 
               {/* Actions & Status */}
-              <div className="flex items-center gap-2">
-                <span className={`px-2.5 py-1 text-[11px] font-bold rounded-lg ${
-                  q.status === "In Consultation" ? "bg-emerald-600 text-white" :
-                  q.status === "Checked In" ? "bg-purple-100 text-purple-800" : "bg-slate-100 text-slate-600"
+              <div className="flex items-center gap-2 shrink-0">
+                <span className={`px-2.5 py-1 text-[10px] font-bold rounded-lg border ${
+                  q.status === "In Consultation" ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" :
+                  q.status === "Checked In" ? "bg-purple-500/20 text-purple-300 border-purple-500/30" :
+                  q.status === "Ready for Consultation" ? "bg-blue-500/20 text-blue-300 border-blue-500/30" :
+                  "bg-slate-800 text-slate-300 border-slate-700"
                 }`}>
                   {q.status}
                 </span>

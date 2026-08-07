@@ -313,7 +313,7 @@ function DoctorDashboardContent() {
         />
 
         {/* Dynamic Content View Router */}
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8">
+        <main className="flex-1 overflow-y-auto p-6 lg:p-8 font-sans">
           {loading ? (
             <div className="h-full flex items-center justify-center">
               <div className="text-center text-slate-400">

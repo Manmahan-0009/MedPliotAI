@@ -88,7 +88,7 @@ export default function ClinicalTasksWidget({
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col h-full">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col h-full font-sans max-h-[460px] overflow-y-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div>
