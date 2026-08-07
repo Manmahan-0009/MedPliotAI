@@ -5,7 +5,7 @@ import uuid
 
 
 class ConsultationSave(BaseModel):
-    patient_id: uuid.UUID
+    patient_id: str
     doctor_name: Optional[str] = "Dr. Sarah Mitchell"
     transcript: str
     ai_summary: Optional[str] = None

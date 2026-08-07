@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime
 from sqlalchemy import Column, String, DateTime, Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 from app.database import Base
 import enum
 
@@ -21,3 +22,6 @@ class User(Base):
     role = Column(SAEnum(UserRole), nullable=False, default=UserRole.doctor)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationship
+    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")

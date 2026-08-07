@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { getPatients, searchPatients, deletePatient } from "@/lib/api";
 import { Patient } from "@/lib/types";
+import DashboardLayout from "@/components/DashboardLayout";
 
 export default function PatientsPage() {
   const router = useRouter();
@@ -52,27 +53,21 @@ export default function PatientsPage() {
     });
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 font-sans">
+    <DashboardLayout title="Patient Directory">
       <div className="max-w-6xl mx-auto space-y-6">
 
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        {/* Header Actions */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
           <div>
-            <h1 className="text-2xl font-bold text-blue-600">Patient Directory</h1>
-            <p className="text-slate-500 text-sm mt-1">
+            <h2 className="text-lg font-bold text-slate-800 dark:text-white">Patients List</h2>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mt-0.5">
               {patients.length} patient{patients.length !== 1 ? "s" : ""} found
             </p>
           </div>
           <div className="flex gap-3">
             <button
-              onClick={() => router.push("/")}
-              className="px-4 py-2 text-sm rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-colors"
-            >
-              ← Consultation
-            </button>
-            <button
               onClick={() => router.push("/patients/new")}
-              className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors font-semibold"
+              className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors font-semibold shadow-sm"
             >
               + Add Patient
             </button>
@@ -80,26 +75,26 @@ export default function PatientsPage() {
         </div>
 
         {/* Search */}
-        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm transition-colors">
           <input
             type="text"
             placeholder="Search by name, patient ID, phone, or email..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full text-sm border border-slate-200 rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full text-sm border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors placeholder:text-slate-400 dark:placeholder:text-slate-500"
           />
         </div>
 
         {/* Error */}
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm">
+          <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-xl p-4 text-sm transition-colors">
             ⚠️ {error}
           </div>
         )}
 
         {/* Loading */}
         {loading && (
-          <div className="text-center py-16 text-slate-400">
+          <div className="text-center py-16 text-slate-400 dark:text-slate-500">
             <div className="animate-spin inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mb-3" />
             <p>Loading patients...</p>
           </div>
@@ -107,9 +102,9 @@ export default function PatientsPage() {
 
         {/* Empty */}
         {!loading && patients.length === 0 && !error && (
-          <div className="text-center py-16 text-slate-400">
+          <div className="text-center py-16 text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
             <p className="text-4xl mb-3">🏥</p>
-            <p className="font-semibold">No patients found</p>
+            <p className="font-semibold text-slate-600 dark:text-slate-300">No patients found</p>
             <p className="text-sm mt-1">
               {search ? "Try a different search term" : "Add your first patient to get started"}
             </p>
@@ -118,63 +113,63 @@ export default function PatientsPage() {
 
         {/* Patient Table */}
         {!loading && patients.length > 0 && (
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="text-left px-4 py-3 font-semibold text-slate-600">Patient</th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-600">ID</th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-600">Age / Gender</th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-600">Blood Group</th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-600">Phone</th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-600">Last Updated</th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-600">Actions</th>
+                  <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 transition-colors">
+                    <th className="text-left px-4 py-3 font-semibold text-slate-600 dark:text-slate-400">Patient</th>
+                    <th className="text-left px-4 py-3 font-semibold text-slate-600 dark:text-slate-400">ID</th>
+                    <th className="text-left px-4 py-3 font-semibold text-slate-600 dark:text-slate-400">Age / Gender</th>
+                    <th className="text-left px-4 py-3 font-semibold text-slate-600 dark:text-slate-400">Blood Group</th>
+                    <th className="text-left px-4 py-3 font-semibold text-slate-600 dark:text-slate-400">Phone</th>
+                    <th className="text-left px-4 py-3 font-semibold text-slate-600 dark:text-slate-400">Last Updated</th>
+                    <th className="text-left px-4 py-3 font-semibold text-slate-600 dark:text-slate-400">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
                   {patients.map(p => (
-                    <tr key={p.id} className="hover:bg-slate-50 transition-colors">
+                    <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs flex-shrink-0">
+                          <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 flex items-center justify-center font-bold text-xs flex-shrink-0 border border-blue-200 dark:border-blue-800/50">
                             {initials(p)}
                           </div>
-                          <span className="font-medium text-slate-800">
+                          <span className="font-medium text-slate-800 dark:text-slate-200">
                             {p.first_name} {p.last_name}
                           </span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-slate-500 font-mono text-xs">{p.patient_id}</td>
-                      <td className="px-4 py-3 text-slate-600">
+                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400 font-mono text-xs">{p.patient_id}</td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
                         {p.age ? `${p.age} yrs` : "—"} · {p.gender || "—"}
                       </td>
                       <td className="px-4 py-3">
                         {p.blood_group ? (
-                          <span className="bg-red-50 text-red-700 px-2 py-0.5 rounded text-xs font-semibold">
+                          <span className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-2 py-0.5 rounded text-xs font-semibold border border-red-200 dark:border-red-800/50">
                             {p.blood_group}
                           </span>
                         ) : "—"}
                       </td>
-                      <td className="px-4 py-3 text-slate-600">{p.phone || "—"}</td>
-                      <td className="px-4 py-3 text-slate-500">{lastVisit(p)}</td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{p.phone || "—"}</td>
+                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{lastVisit(p)}</td>
                       <td className="px-4 py-3">
                         <div className="flex gap-2">
                           <button
                             onClick={() => router.push(`/patients/${p.patient_id}`)}
-                            className="px-3 py-1 text-xs rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors font-medium"
+                            className="px-3 py-1 text-xs rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-800/50 transition-colors font-medium"
                           >
                             View
                           </button>
                           <button
                             onClick={() => router.push(`/?patient=${p.patient_id}&name=${p.first_name}+${p.last_name}`)}
-                            className="px-3 py-1 text-xs rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors font-medium"
+                            className="px-3 py-1 text-xs rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-800/50 transition-colors font-medium"
                           >
                             Consult
                           </button>
                           <button
                             onClick={() => handleDelete(p.id, p.patient_id)}
-                            className="px-3 py-1 text-xs rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors font-medium"
+                            className="px-3 py-1 text-xs rounded-lg bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-800/50 transition-colors font-medium"
                           >
                             ✕
                           </button>
@@ -187,8 +182,7 @@ export default function PatientsPage() {
             </div>
           </div>
         )}
-
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

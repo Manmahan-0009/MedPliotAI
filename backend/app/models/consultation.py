@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, Text, ForeignKey
+from sqlalchemy import Column, String, DateTime, Text, ForeignKey, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -16,9 +16,14 @@ class Consultation(Base):
     consultation_date = Column(DateTime, default=datetime.utcnow)
     transcript = Column(Text, nullable=True)
     ai_summary = Column(Text, nullable=True)
+    soap_notes = Column(JSON, nullable=True)
+    clinical_notes = Column(JSON, nullable=True)
     pdf_path = Column(String(500), nullable=True)
+    status = Column(String(50), default="Pending", nullable=False) # Pending, Documented, Discharged
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationship
     patient = relationship("Patient", back_populates="consultations")
+    prescription = relationship("Prescription", back_populates="consultation", uselist=False, cascade="all, delete-orphan")
+    discharge = relationship("Discharge", back_populates="consultation", uselist=False, cascade="all, delete-orphan")

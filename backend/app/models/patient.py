@@ -31,8 +31,16 @@ class Patient(Base):
     medical_conditions = Column(Text, nullable=True)
     current_medications = Column(Text, nullable=True)
     status = Column(SAEnum(PatientStatus), nullable=False, default=PatientStatus.active)
+    
+    # AI Generated Scores
+    recovery_score = Column(Integer, default=0, nullable=True)
+    medication_safety_score = Column(Integer, default=100, nullable=True)
+    
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationship
     consultations = relationship("Consultation", back_populates="patient", cascade="all, delete-orphan")
+    prescriptions = relationship("Prescription", back_populates="patient", cascade="all, delete-orphan")
+    discharges = relationship("Discharge", back_populates="patient", cascade="all, delete-orphan")
+    timeline_events = relationship("PatientTimeline", back_populates="patient", cascade="all, delete-orphan")

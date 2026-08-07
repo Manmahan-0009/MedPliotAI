@@ -11,7 +11,7 @@ from fpdf import FPDF
 from fastapi.responses import FileResponse
 from fastapi.background import BackgroundTasks
 
-from app.routers import patients, consultations
+from app.routers import patients, consultations, clinical, prescriptions, pharmacy
 from app.database import engine, Base
 
 load_dotenv()
@@ -31,6 +31,9 @@ app.add_middleware(
 
 app.include_router(patients.router)
 app.include_router(consultations.router)
+app.include_router(clinical.router)
+app.include_router(prescriptions.router)
+app.include_router(pharmacy.router)
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not GROQ_API_KEY:
@@ -86,17 +89,33 @@ async def generate_summary(req: SummaryRequest):
     
     if not GROQ_API_KEY:
         return {
-            "summary": "### Chief Complaint\nDry cough, fever (101°F), and fatigue for 3 days.\n\n### Symptoms Mentioned\n- Persistent dry cough\n- Moderate fever\n- Mild headache and generalised weakness\n\n### Duration\n3 days\n\n### Possible Clinical Summary\nUpper respiratory tract viral infection / flu-like illness. Patient denies dyspnea or chest pain.\n\n### Suggested Follow-up Questions\n- Any recent travel or contact with sick individuals?\n- Any sore throat or nasal congestion?\n\n### Recommended Tests\n- Complete Blood Count (CBC)\n- Rapid Influenza / COVID-19 Antigen Test\n\n### Important Notes\n- Patient denies chest pain or shortness of breath.\n- Advised rest, oral hydration, and antipyretics."
+            "chief_complaint": "Dry cough and fever",
+            "history_of_present_illness": "Patient has been experiencing a persistent dry cough and fever of around 101°F for the past 3 days. Also reports fatigue and slight headache.",
+            "symptoms": ["Persistent dry cough", "Fever (101°F)", "Fatigue", "Mild headache"],
+            "past_history": "Not explicitly mentioned.",
+            "clinical_findings": "Patient denies dyspnea or chest pain.",
+            "diagnosis": "Viral upper respiratory tract infection",
+            "assessment": "Patient presents with classic flu-like symptoms. Vitals stable, no red flags for pneumonia.",
+            "treatment_plan": ["Complete Blood Count (CBC)", "COVID-19 / Flu Antigen Test", "Antipyretics for fever"],
+            "lifestyle_advice": "Rest, oral hydration.",
+            "follow_up": "Return in 3 days if symptoms worsen or fail to resolve."
         }
     
     prompt = f"""
     You are an AI medical assistant. Generate a structured clinical consultation summary based on the following transcript.
     Do NOT invent information. Do NOT diagnose. Do NOT prescribe. Only summarize the transcript.
     
-    You MUST respond in valid JSON format with exactly three keys:
-    1. "summary": A well-formatted markdown string containing the Chief Complaint, History, Symptoms Mentioned, Duration, Possible Clinical Summary, and Suggested Follow-up Questions.
-    2. "recommended_tests": A JSON list of strings, each being a short recommended test.
-    3. "important_notes": A JSON list of strings, each being a short important note.
+    You MUST respond in valid JSON format with the following strictly defined keys:
+    1. "chief_complaint": A short string describing the primary reason for the visit.
+    2. "history_of_present_illness": A detailed paragraph describing the history of the complaint.
+    3. "symptoms": A JSON list of strings detailing the reported symptoms.
+    4. "past_history": A string summarizing any relevant past medical history mentioned.
+    5. "clinical_findings": A string describing objective findings if mentioned.
+    6. "diagnosis": A string containing the provisional diagnosis.
+    7. "assessment": A short paragraph summarizing the clinical assessment.
+    8. "treatment_plan": A JSON list of strings with the recommended treatment or investigations.
+    9. "lifestyle_advice": A string with recommended lifestyle changes or home care.
+    10. "follow_up": A string with follow-up instructions.
 
     Transcript:
     {req.transcript}
@@ -115,9 +134,17 @@ async def generate_summary(req: SummaryRequest):
         data = json.loads(response.choices[0].message.content)
         return data
     except Exception as e:
-        print(f"Groq Summary API Error: {e}")
         return {
-            "summary": "### Chief Complaint\nDry cough, fever (101°F), and fatigue for 3 days.\n\n### Symptoms Mentioned\n- Persistent dry cough\n- Moderate fever\n- Mild headache\n\n### Duration\n3 days\n\n### Recommended Tests\n- Complete Blood Count (CBC)\n- COVID-19 / Flu Antigen Test\n\n### Important Notes\n- Patient denies chest pain or shortness of breath."
+            "chief_complaint": "Dry cough and fever",
+            "history_of_present_illness": "Patient has been experiencing a persistent dry cough and fever of around 101°F for the past 3 days. Also reports fatigue and slight headache.",
+            "symptoms": ["Persistent dry cough", "Fever (101°F)", "Fatigue", "Mild headache"],
+            "past_history": "Not explicitly mentioned.",
+            "clinical_findings": "Patient denies dyspnea or chest pain.",
+            "diagnosis": "Viral upper respiratory tract infection",
+            "assessment": "Patient presents with classic flu-like symptoms. Vitals stable, no red flags for pneumonia.",
+            "treatment_plan": ["Complete Blood Count (CBC)", "COVID-19 / Flu Antigen Test", "Antipyretics for fever"],
+            "lifestyle_advice": "Rest, oral hydration.",
+            "follow_up": "Return in 3 days if symptoms worsen or fail to resolve."
         }
 
 class ReportRequest(BaseModel):
@@ -126,6 +153,9 @@ class ReportRequest(BaseModel):
     date: str
     transcript: str
     summary: str
+    soap_notes: dict = None
+    prescription_items: list = None
+    schedule_items: list = None
 
 def remove_file(path: str):
     if os.path.exists(path):
@@ -155,6 +185,48 @@ async def generate_pdf(req: ReportRequest, background_tasks: BackgroundTasks):
     pdf.set_font("Helvetica", size=10)
     pdf.multi_cell(0, 7, txt=clean_text(req.summary))
     
+    if req.soap_notes:
+        pdf.ln(10)
+        pdf.set_font("Helvetica", 'B', 14)
+        pdf.cell(200, 10, txt=clean_text("SOAP Notes"), ln=True)
+        pdf.set_font("Helvetica", 'B', 12)
+        pdf.cell(200, 10, txt=clean_text("Subjective"), ln=True)
+        pdf.set_font("Helvetica", size=10)
+        pdf.multi_cell(0, 7, txt=clean_text(str(req.soap_notes.get('subjective', ''))))
+        
+        pdf.set_font("Helvetica", 'B', 12)
+        pdf.cell(200, 10, txt=clean_text("Objective"), ln=True)
+        pdf.set_font("Helvetica", size=10)
+        pdf.multi_cell(0, 7, txt=clean_text(str(req.soap_notes.get('objective', ''))))
+        
+        pdf.set_font("Helvetica", 'B', 12)
+        pdf.cell(200, 10, txt=clean_text("Assessment"), ln=True)
+        pdf.set_font("Helvetica", size=10)
+        pdf.multi_cell(0, 7, txt=clean_text(str(req.soap_notes.get('assessment', ''))))
+        
+        pdf.set_font("Helvetica", 'B', 12)
+        pdf.cell(200, 10, txt=clean_text("Plan"), ln=True)
+        pdf.set_font("Helvetica", size=10)
+        pdf.multi_cell(0, 7, txt=clean_text(str(req.soap_notes.get('plan', ''))))
+
+    if req.prescription_items:
+        pdf.ln(10)
+        pdf.set_font("Helvetica", 'B', 14)
+        pdf.cell(200, 10, txt=clean_text("Prescription"), ln=True)
+        pdf.set_font("Helvetica", size=10)
+        for item in req.prescription_items:
+            med_details = f"- {item.get('medicine_name')} | {item.get('dosage')} | {item.get('frequency')} | {item.get('duration')} | {item.get('food_instruction')}"
+            pdf.multi_cell(0, 7, txt=clean_text(med_details))
+            
+    if req.schedule_items:
+        pdf.ln(10)
+        pdf.set_font("Helvetica", 'B', 14)
+        pdf.cell(200, 10, txt=clean_text("Medicine Schedule"), ln=True)
+        pdf.set_font("Helvetica", size=10)
+        for item in req.schedule_items:
+            sched_details = f"- {item.get('time_slot')}: {item.get('medicine_name')} ({item.get('dosage')}) - {item.get('food_instruction')}"
+            pdf.multi_cell(0, 7, txt=clean_text(sched_details))
+    
     pdf.ln(10)
     pdf.set_font("Helvetica", 'B', 14)
     pdf.cell(200, 10, txt=clean_text("Transcript"), ln=True)
@@ -162,6 +234,11 @@ async def generate_pdf(req: ReportRequest, background_tasks: BackgroundTasks):
     pdf.multi_cell(0, 7, txt=clean_text(req.transcript))
     
     pdf.ln(20)
+    pdf.set_font("Helvetica", 'B', 12)
+    pdf.cell(0, 10, txt=clean_text("_______________________"), ln=True, align='R')
+    pdf.cell(0, 10, txt=clean_text("Doctor's Signature"), ln=True, align='R')
+    
+    pdf.ln(10)
     pdf.set_font("Helvetica", 'I', 8)
     pdf.cell(0, 10, txt=clean_text("Generated by MediPilot AI"), ln=True, align='C')
     

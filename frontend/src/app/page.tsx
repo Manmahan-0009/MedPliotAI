@@ -5,12 +5,12 @@ import {
   Mic, Square, Download, Play, Pause, FileText, Users, Calendar, Folder, 
   LayoutTemplate, LineChart, Settings, ShieldCheck, Lock, Activity, 
   UserCircle, Stethoscope, FilePlus, ChevronRight, CheckCircle2, History,
-  Send, Edit3, ClipboardList, BookOpen, User, Check, ChevronDown, Trash2,
-  Moon, Sun
+  Send, Edit3, ClipboardList, BookOpen, User, Check, ChevronDown, Trash2
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense } from "react";
+import DashboardLayout from "@/components/DashboardLayout";
 
 function ConsultationContent() {
   const searchParams = useSearchParams();
@@ -22,15 +22,15 @@ function ConsultationContent() {
 
   const [status, setStatus] = useState("Idle"); 
   const [transcript, setTranscript] = useState("");
-  const [summary, setSummary] = useState("");
-  const [recommendedTests, setRecommendedTests] = useState<string[]>([]);
-  const [importantNotes, setImportantNotes] = useState<string[]>([]);
+  const [summary, setSummary] = useState<any>(null);
+  const [isSummaryApproved, setIsSummaryApproved] = useState(false);
   const [timer, setTimer] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isEditingSummary, setIsEditingSummary] = useState(false);
   const [ehrStatus, setEhrStatus] = useState("");
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [consultationId, setConsultationId] = useState<string | null>(null);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -76,9 +76,14 @@ function ConsultationContent() {
         setTimer((prev) => prev + 1);
       }, 1000);
       
-    } catch (err) {
-      console.error(err);
-      setStatus("Error: No Mic");
+    } catch (err: any) {
+      if (err.name === 'NotAllowedError') {
+        alert("Microphone access was denied. Please allow microphone permissions in your browser settings to use this feature.");
+        setStatus("Mic Access Denied");
+      } else {
+        console.warn("Microphone error:", err);
+        setStatus("Error: No Mic");
+      }
     }
   };
 
@@ -122,9 +127,8 @@ function ConsultationContent() {
 
   const clearRecording = () => {
     setTranscript("");
-    setSummary("");
-    setRecommendedTests([]);
-    setImportantNotes([]);
+    setSummary(null);
+    setIsSummaryApproved(false);
     setTimer(0);
     setStatus("Idle");
   };
@@ -156,9 +160,30 @@ function ConsultationContent() {
       if (!summaryResponse.ok) throw new Error("Failed to generate summary");
       
       const summaryData = await summaryResponse.json();
-      setSummary(summaryData.summary);
-      setRecommendedTests(summaryData.recommended_tests || []);
-      setImportantNotes(summaryData.important_notes || []);
+      setSummary(summaryData);
+      setIsSummaryApproved(false);
+
+      // 3. Save to database to get consultationId
+      try {
+        const saveResponse = await fetch("http://localhost:8000/api/consultations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            patient_id: patientId,
+            doctor_name: "Dr. Sarah Mitchell",
+            transcript: audioData.transcript,
+            ai_summary: JSON.stringify(summaryData),
+            pdf_path: ""
+          }),
+        });
+        if (saveResponse.ok) {
+          const savedConsult = await saveResponse.json();
+          setConsultationId(savedConsult.consultation_id);
+        }
+      } catch (e) {
+        console.error("Failed to save consultation", e);
+      }
+
       setStatus("Completed");
 
     } catch (error) {
@@ -178,7 +203,7 @@ function ConsultationContent() {
           patient_name: patientName,
           date: new Date().toLocaleDateString(),
           transcript: transcript,
-          summary: summary
+          summary: JSON.stringify(summary)
         }),
       });
 
@@ -200,134 +225,11 @@ function ConsultationContent() {
   };
 
   return (
-    <div className={`flex h-screen bg-[#f9fafb] dark:bg-slate-950 font-sans text-slate-800 dark:text-slate-100 overflow-hidden transition-colors duration-300 ${isDarkMode ? 'dark' : ''}`}>
-      
-      {/* Sidebar */}
-      <aside className="w-[280px] bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between shrink-0 h-full transition-colors duration-300">
-        <div>
-          <div className="h-20 flex items-center px-6">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800/50">
-                <Stethoscope className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="text-slate-900 dark:text-white font-bold text-lg tracking-tight leading-tight">MediPilot AI</div>
-                <div className="text-slate-500 dark:text-slate-400 text-[11px] font-medium tracking-wide">AI Clinical Documentation</div>
-              </div>
-            </div>
-          </div>
-          
-          <nav className="px-4 py-2 space-y-1">
-            <a href="#" className="flex items-center gap-3 px-4 py-3 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl font-semibold transition-colors">
-              <Mic className="w-5 h-5" />
-              Consultation
-            </a>
-            <a onClick={() => router.push("/patients")} className="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl font-medium transition-colors cursor-pointer">
-              <Users className="w-5 h-5 text-slate-400 dark:text-slate-500" />
-              Patients
-            </a>
-            <a href="#" className="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl font-medium transition-colors">
-              <Calendar className="w-5 h-5 text-slate-400 dark:text-slate-500" />
-              Appointments
-            </a>
-            <a href="#" className="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl font-medium transition-colors">
-              <FileText className="w-5 h-5 text-slate-400 dark:text-slate-500" />
-              Medical Records
-            </a>
-            <a href="#" className="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl font-medium transition-colors">
-              <LayoutTemplate className="w-5 h-5 text-slate-400 dark:text-slate-500" />
-              Templates
-            </a>
-            <a href="#" className="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl font-medium transition-colors">
-              <LineChart className="w-5 h-5 text-slate-400 dark:text-slate-500" />
-              Analytics
-            </a>
-            <a href="#" className="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl font-medium transition-colors mt-4">
-              <Settings className="w-5 h-5 text-slate-400 dark:text-slate-500" />
-              Settings
-            </a>
-          </nav>
-        </div>
-        
-        <div className="p-6">
-          <div className="bg-white dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm mb-6 flex gap-4 transition-colors">
-            <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center shrink-0">
-              <Lock className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <div>
-              <div className="text-slate-800 dark:text-slate-200 font-bold text-sm mb-1">Secure System</div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
-                Your conversations and patient data are encrypted and secure.
-              </p>
-            </div>
-          </div>
-          
-          <div className="flex items-center justify-between">
-            <div className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
-              © 2025 MediPilot AI<br/>All rights reserved
-            </div>
-            
-            {/* Dark Mode Toggle */}
-            <button 
-              onClick={() => setIsDarkMode(!isDarkMode)}
-              className="p-2.5 rounded-full bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-              title="Toggle Theme"
-            >
-              {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            </button>
-          </div>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden bg-[#f9fafb] dark:bg-slate-950 transition-colors">
-        
-        {/* Topbar */}
-        <header className="h-20 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 shrink-0 transition-colors">
-          <div>
-            <h1 className="text-lg font-bold text-slate-800 dark:text-white">AI Consultation Session</h1>
-            <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 text-xs font-semibold mt-0.5">
-              <div className={`w-1.5 h-1.5 rounded-full ${isRecording ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
-              {isRecording ? "Recording in progress" : "Session Idle"}
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-8">
-            <div className="flex items-center gap-3">
-              <ShieldCheck className="w-8 h-8 text-blue-500 dark:text-blue-400 stroke-1" />
-              <div>
-                <div className="text-sm font-bold text-slate-800 dark:text-slate-200">HIPAA Compliant</div>
-                <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">Secure & Encrypted</div>
-              </div>
-            </div>
-            
-            <div className="w-px h-8 bg-slate-200 dark:bg-slate-700"></div>
-            
-            <div className="flex items-center gap-3">
-              <Calendar className="w-6 h-6 text-slate-400 dark:text-slate-500 stroke-1" />
-              <div>
-                <div className="text-sm font-bold text-slate-800 dark:text-slate-200">May 16, 2025</div>
-                <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">10:24 AM</div>
-              </div>
-            </div>
-
-            <div className="w-px h-8 bg-slate-200 dark:bg-slate-700"></div>
-            
-            <div className="flex items-center gap-3 cursor-pointer">
-              <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/30 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm border border-blue-100 dark:border-blue-800/50">
-                DS
-              </div>
-              <div className="mr-2">
-                <div className="text-sm font-bold text-slate-800 dark:text-slate-200">Dr. Sarah Mitchell</div>
-                <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">Cardiology</div>
-              </div>
-              <ChevronDown className="w-4 h-4 text-slate-400 dark:text-slate-500" />
-            </div>
-          </div>
-        </header>
-
-        {/* Content Area */}
-        <div className="flex-1 overflow-y-auto p-8">
+    <DashboardLayout 
+      title="AI Consultation Session" 
+      isRecording={isRecording}
+    >
+      <div className="flex-1">
           
           {/* Patient Header Card */}
           <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 mb-6 flex items-center justify-between shadow-sm transition-colors">
@@ -538,88 +440,114 @@ function ConsultationContent() {
                     </p>
                   </div>
 
-                  {/* Summary Text Content - 2 Column Grid */}
-                  {isEditingSummary ? (
-                    <textarea 
-                      value={summary}
-                      onChange={(e) => setSummary(e.target.value)}
-                      className="w-full h-96 p-4 border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-950 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm text-slate-700 dark:text-slate-200 font-mono shadow-inner"
-                      placeholder="Edit the AI generated summary here..."
-                    />
-                  ) : (
-                    <div className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-200 leading-relaxed h-96 overflow-y-auto">
-                      {summary}
-                    </div>
-                  )}
-                  {/* Bottom Panels (Tests & Notes) */}
-                  <div className="grid grid-cols-2 gap-4 mt-4">
-                    {/* Tests */}
-                    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 shadow-sm">
-                      <h3 className="font-bold text-blue-600 dark:text-blue-400 text-sm mb-4">Recommended Tests</h3>
-                      <div className="space-y-3">
-                        {recommendedTests.length > 0 ? recommendedTests.map((test, index) => (
-                          <label key={index} className="flex items-start gap-3 text-sm text-slate-700 dark:text-slate-300 cursor-pointer group">
-                            <input type="checkbox" className="mt-1 rounded border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-blue-600 focus:ring-blue-500" />
-                            <span className="group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{test}</span>
-                          </label>
-                        )) : (
-                          <div className="text-sm text-slate-400 italic">No tests recommended.</div>
+                  {/* Summary Structured Form */}
+                  <div className="flex flex-col gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Chief Complaint */}
+                      <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 block">Chief Complaint</label>
+                        {isEditingSummary ? (
+                          <input type="text" value={summary.chief_complaint || ""} onChange={(e) => setSummary({...summary, chief_complaint: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded p-2 text-sm text-slate-800 dark:text-slate-200" />
+                        ) : (
+                          <div className="text-sm font-semibold text-slate-800 dark:text-slate-200">{summary.chief_complaint || "N/A"}</div>
+                        )}
+                      </div>
+
+                      {/* Diagnosis */}
+                      <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 block">Provisional Diagnosis</label>
+                        {isEditingSummary ? (
+                          <input type="text" value={summary.diagnosis || ""} onChange={(e) => setSummary({...summary, diagnosis: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded p-2 text-sm text-slate-800 dark:text-slate-200" />
+                        ) : (
+                          <div className="text-sm font-semibold text-slate-800 dark:text-slate-200">{summary.diagnosis || "N/A"}</div>
                         )}
                       </div>
                     </div>
 
-                    {/* Notes */}
-                    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 shadow-sm">
-                      <h3 className="font-bold text-emerald-600 dark:text-emerald-400 text-sm mb-4 flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4" /> Important Notes
-                      </h3>
-                      <ul className="list-disc list-inside text-sm text-slate-600 dark:text-slate-300 space-y-2.5 leading-relaxed">
-                        {importantNotes.length > 0 ? importantNotes.map((note, index) => (
-                          <li key={index}>{note}</li>
-                        )) : (
-                          <li className="text-slate-400 italic list-none">No important notes.</li>
+                    {/* HPI */}
+                    <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                      <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 block">History of Present Illness</label>
+                      {isEditingSummary ? (
+                        <textarea value={summary.history_of_present_illness || ""} onChange={(e) => setSummary({...summary, history_of_present_illness: e.target.value})} className="w-full h-24 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded p-2 text-sm text-slate-800 dark:text-slate-200" />
+                      ) : (
+                        <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{summary.history_of_present_illness || "N/A"}</div>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Symptoms */}
+                      <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 block">Symptoms</label>
+                        {isEditingSummary ? (
+                          <textarea value={(summary.symptoms || []).join('\n')} onChange={(e) => setSummary({...summary, symptoms: e.target.value.split('\n')})} className="w-full h-24 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded p-2 text-sm text-slate-800 dark:text-slate-200" placeholder="One symptom per line" />
+                        ) : (
+                          <ul className="list-disc list-inside text-sm text-slate-700 dark:text-slate-300 space-y-1">
+                            {(summary.symptoms || []).map((s: string, i: number) => <li key={i}>{s}</li>)}
+                          </ul>
                         )}
-                      </ul>
+                      </div>
+
+                      {/* Treatment Plan */}
+                      <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                        <label className="text-xs font-bold text-blue-500 dark:text-blue-400 uppercase tracking-wider mb-2 block">Treatment Plan / Tests</label>
+                        {isEditingSummary ? (
+                          <textarea value={(summary.treatment_plan || []).join('\n')} onChange={(e) => setSummary({...summary, treatment_plan: e.target.value.split('\n')})} className="w-full h-24 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded p-2 text-sm text-slate-800 dark:text-slate-200" placeholder="One item per line" />
+                        ) : (
+                          <ul className="list-disc list-inside text-sm text-blue-700 dark:text-blue-300 font-medium space-y-1">
+                            {(summary.treatment_plan || []).map((t: string, i: number) => <li key={i}>{t}</li>)}
+                          </ul>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
               )}
 
               {/* Action Buttons */}
-              <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center gap-4">
+              <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex flex-wrap items-center gap-4">
                 {ehrStatus && (
                   <div className="mr-auto text-emerald-600 dark:text-emerald-400 text-sm font-bold flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4" /> {ehrStatus}
                   </div>
                 )}
+                
+                {consultationId && isSummaryApproved && (
+                  <button 
+                    onClick={() => router.push(`/clinical-docs?id=${consultationId}`)}
+                    className="mr-auto px-6 py-3 bg-indigo-600 text-white font-bold text-sm rounded-xl hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 shadow-sm"
+                  >
+                    <ClipboardList className="w-4 h-4" /> Clinical Documentation
+                  </button>
+                )}
+
                 <button 
                   onClick={downloadPDF}
                   disabled={!summary || status === "Generating PDF..." || isEditingSummary}
-                  className={`${ehrStatus ? '' : 'ml-auto'} px-6 py-3 bg-blue-600 text-white font-bold text-sm rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm shadow-blue-200 dark:shadow-none`}
+                  className={`${ehrStatus || isSummaryApproved ? '' : 'ml-auto'} px-5 py-2.5 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-sm rounded-xl hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm`}
                 >
-                  <Download className="w-4 h-4" /> Download PDF
+                  <Download className="w-4 h-4" /> PDF
                 </button>
                 <button 
                   onClick={() => setIsEditingSummary(!isEditingSummary)}
-                  disabled={!summary}
-                  className={`px-6 py-3 border font-bold text-sm rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm ${isEditingSummary ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-300' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-700'}`}
+                  disabled={!summary || isSummaryApproved}
+                  className={`px-5 py-2.5 border font-bold text-sm rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm ${isEditingSummary ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-300' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
                 >
-                  <Edit3 className="w-4 h-4" /> {isEditingSummary ? "Save Summary" : "Edit Summary"}
+                  <Edit3 className="w-4 h-4" /> {isEditingSummary ? "Save Edits" : "Edit"}
                 </button>
-                <button 
-                  onClick={handleSendEHR}
-                  disabled={!summary || isEditingSummary || ehrStatus !== ""}
-                  className="px-6 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 font-bold text-sm rounded-xl hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm"
-                >
-                  <Send className="w-4 h-4" /> Send to EHR
-                </button>
+                {!isSummaryApproved && summary && !isEditingSummary && (
+                  <button 
+                    onClick={() => setIsSummaryApproved(true)}
+                    className="px-6 py-2.5 bg-emerald-600 text-white font-bold text-sm rounded-xl hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2 shadow-sm shadow-emerald-200 dark:shadow-none"
+                  >
+                    <Check className="w-4 h-4" /> Approve Summary
+                  </button>
+                )}
               </div>
             </div>
 
           </div>
         </div>
-      </main>
-    </div>
+    </DashboardLayout>
   );
 }
 
