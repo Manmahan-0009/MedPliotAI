@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+alembic
+psycopg2-binary
+python-dotenv
+firebase-admin
+pydantic
+pydantic-settings
+groq
+fpdf2
+python-multipart
