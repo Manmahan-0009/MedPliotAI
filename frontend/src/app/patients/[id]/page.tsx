@@ -4,8 +4,10 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { getPatient } from "@/lib/api";
 import { PatientWithConsultations } from "@/lib/types";
+import { ProtectedRoute } from "@/lib/protected-route";
 
-export default function PatientProfilePage() {
+function PatientDetailContent() {
+
   const router = useRouter();
   const params = useParams();
   const patientId = params?.id as string;
@@ -196,3 +198,13 @@ export default function PatientProfilePage() {
     </div>
   );
 }
+
+
+export default function PatientProfilePage() {
+  return (
+    <ProtectedRoute allowedRole="doctor">
+      <PatientDetailContent />
+    </ProtectedRoute>
+  );
+}
+

@@ -4,11 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPatient } from "@/lib/api";
 import { PatientCreate } from "@/lib/types";
+import { ProtectedRoute } from "@/lib/protected-route";
 
 const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 const GENDERS = ["Male", "Female", "Other", "Prefer not to say"];
 
-export default function NewPatientPage() {
+function NewPatientContent() {
+
+
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -191,3 +194,13 @@ export default function NewPatientPage() {
     </div>
   );
 }
+
+
+export default function NewPatientPage() {
+  return (
+    <ProtectedRoute allowedRole="doctor">
+      <NewPatientContent />
+    </ProtectedRoute>
+  );
+}
+

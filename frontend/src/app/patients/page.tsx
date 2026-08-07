@@ -4,8 +4,10 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { getPatients, searchPatients, deletePatient } from "@/lib/api";
 import { Patient } from "@/lib/types";
+import { ProtectedRoute } from "@/lib/protected-route";
 
-export default function PatientsPage() {
+function PatientsContent() {
+
   const router = useRouter();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
@@ -192,3 +194,13 @@ export default function PatientsPage() {
     </div>
   );
 }
+
+
+export default function PatientsPage() {
+  return (
+    <ProtectedRoute allowedRole="doctor">
+      <PatientsContent />
+    </ProtectedRoute>
+  );
+}
+

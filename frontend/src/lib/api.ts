@@ -1,7 +1,9 @@
 // API client — all backend calls go through here
 import { Patient, PatientCreate, PatientWithConsultations, Consultation } from "./types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+export const API_URL = API_BASE_URL;
+
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {

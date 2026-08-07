@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime, date
-from sqlalchemy import Column, String, DateTime, Date, Integer, Text, Enum as SAEnum, Boolean
+from sqlalchemy import Column, String, DateTime, Date, Integer, Text, Enum as SAEnum, Boolean, ForeignKey
+
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -16,6 +17,7 @@ class Patient(Base):
     __tablename__ = "patients"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     patient_id = Column(String(20), unique=True, nullable=False, index=True)  # MP-2026-0001
     first_name = Column(String(100), nullable=False)
     last_name = Column(String(100), nullable=False)
@@ -34,5 +36,7 @@ class Patient(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Relationship
+    # Relationships
+    user = relationship("User", back_populates="patient_profile")
     consultations = relationship("Consultation", back_populates="patient", cascade="all, delete-orphan")
+

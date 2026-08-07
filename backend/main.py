@@ -11,7 +11,7 @@ from fpdf import FPDF
 from fastapi.responses import FileResponse
 from fastapi.background import BackgroundTasks
 
-from app.routers import patients, consultations
+from app.routers import patients, consultations, auth
 from app.database import engine, Base
 
 load_dotenv()
@@ -29,8 +29,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router)
 app.include_router(patients.router)
 app.include_router(consultations.router)
+
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not GROQ_API_KEY:
