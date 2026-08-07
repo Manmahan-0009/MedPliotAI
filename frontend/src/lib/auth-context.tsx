@@ -115,7 +115,9 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const storedSession = loadSession();
+  // Memoize loadSession so it doesn't return a new reference on every render
+  const storedSession = React.useMemo(() => loadSession(), []);
+  
   const [userProfile, setUserProfile] = useState<UserProfile | null>(() => storedSession);
   const [role, setRole] = useState<UserRole>(() => storedSession?.role ?? null);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
