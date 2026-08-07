@@ -1,4 +1,3 @@
-from app.routers.patients import router as patients_router
-from app.routers.consultations import router as consultations_router
+from app.routers import patients, consultations, auth, doctor_dashboard, patient_dashboard
 
-__all__ = ["patients_router", "consultations_router"]
+__all__ = ["patients", "consultations", "auth", "doctor_dashboard", "patient_dashboard"]

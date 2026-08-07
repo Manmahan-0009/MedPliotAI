@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import List, Optional
+from typing import List, Optional, Union
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func, cast, String
@@ -30,10 +30,8 @@ def _calculate_age(dob: Optional[date]) -> Optional[int]:
 def _find_patient(patient_id: str, db: Session) -> Patient:
     """Find patient by UUID string or patient_id string (e.g. MP-2026-0001)."""
     query = db.query(Patient).filter(Patient.status == PatientStatus.active)
-    # Try patient_id first (MP-XXXX format)
     patient = query.filter(Patient.patient_id == patient_id).first()
     if not patient:
-        # Try UUID string match
         try:
             patient = query.filter(cast(Patient.id, String) == patient_id).first()
         except Exception:
@@ -42,21 +40,68 @@ def _find_patient(patient_id: str, db: Session) -> Patient:
 
 
 # ─── GET /api/patients ────────────────────────────────────────────────────────
-@router.get("", response_model=List[PatientOut])
+@router.get("", response_model=Union[List[PatientOut], dict])
 def list_patients(
     skip: int = 0,
     limit: int = 50,
+    search: Optional[str] = None,
+    status: Optional[str] = None,
+    sort_by: Optional[str] = "created_at",
+    order: Optional[str] = "desc",
     db: Session = Depends(get_db),
 ):
-    """Return all active patients with pagination."""
-    return (
-        db.query(Patient)
-        .filter(Patient.status == PatientStatus.active)
-        .order_by(Patient.created_at.desc())
-        .offset(skip)
-        .limit(limit)
-        .all()
-    )
+    """Return active patients with optional search, status filtering, sorting, and pagination."""
+    query = db.query(Patient)
+
+    if status and status.lower() != "all":
+        if status.lower() == "active":
+            query = query.filter(Patient.status == PatientStatus.active)
+        elif status.lower() == "inactive":
+            query = query.filter(Patient.status == PatientStatus.inactive)
+    else:
+        query = query.filter(Patient.status == PatientStatus.active)
+
+    if search and search.strip():
+        term = f"%{search.strip()}%"
+        full_name = func.concat(Patient.first_name, " ", Patient.last_name)
+        query = query.filter(
+            or_(
+                Patient.first_name.ilike(term),
+                Patient.last_name.ilike(term),
+                full_name.ilike(term),
+                Patient.patient_id.ilike(term),
+                Patient.phone.ilike(term),
+                Patient.email.ilike(term),
+                Patient.blood_group.ilike(term),
+            )
+        )
+
+    total = query.count()
+
+    if sort_by == "name":
+        col = Patient.first_name
+    elif sort_by == "patient_id":
+        col = Patient.patient_id
+    elif sort_by == "age":
+        col = Patient.age
+    else:
+        col = Patient.created_at
+
+    if order == "asc":
+        query = query.order_by(col.asc())
+    else:
+        query = query.order_by(col.desc())
+
+    items = query.offset(skip).limit(limit).all()
+    page = (skip // limit) + 1 if limit > 0 else 1
+    total_pages = (total + limit - 1) // limit if limit > 0 else 1
+
+    return {
+        "items": [PatientOut.model_validate(p) for p in items],
+        "total": total,
+        "page": page,
+        "totalPages": total_pages,
+    }
 
 
 # ─── GET /api/patients/search — MUST be before /{patient_id} ─────────────────
@@ -67,7 +112,6 @@ def search_patients(
 ):
     """Search patients by name, patient_id, phone, or email (partial match)."""
     term = f"%{q}%"
-    # Full name search: concat first + last
     full_name = func.concat(Patient.first_name, " ", Patient.last_name)
     return (
         db.query(Patient)
@@ -143,7 +187,7 @@ def update_patient(patient_id: str, payload: PatientUpdate, db: Session = Depend
 # ─── DELETE /api/patients/{id} ────────────────────────────────────────────────
 @router.delete("/{patient_id}", status_code=200)
 def delete_patient(patient_id: str, db: Session = Depends(get_db)):
-    """Soft delete — sets status to inactive. Data is preserved."""
+    """Soft delete — sets status to inactive."""
     patient = _find_patient(patient_id, db)
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
