@@ -35,6 +35,7 @@ import UpcomingAppointmentsWidget from "@/components/dashboard/UpcomingAppointme
 import ClinicalTasksWidget from "@/components/dashboard/ClinicalTasksWidget";
 import ActivityFeedWidget from "@/components/dashboard/ActivityFeedWidget";
 import PatientQueueWidget from "@/components/dashboard/PatientQueueWidget";
+import AiHealthCopilotPanel from "@/components/dashboard/AiHealthCopilotPanel";
 
 function DoctorDashboardContent() {
   const searchParams = useSearchParams();
@@ -368,11 +369,14 @@ function DoctorDashboardContent() {
                               <Icon className="w-4 h-4" />
                             </div>
                           </div>
-                          <div className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">{stat.val}</div>
+                          <div className="text-2xl font-extrabold text-slate-900 dark:text-white">{stat.val}</div>
                         </div>
                       );
                     })}
                   </div>
+
+                  {/* AI Health Copilot Panel */}
+                  <AiHealthCopilotPanel onSelectPatient={() => setActiveTab("patients")} />
 
                   {/* 2 Column Main Interactive Widgets Grid */}
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

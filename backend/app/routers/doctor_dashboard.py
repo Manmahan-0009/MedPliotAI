@@ -1,5 +1,13 @@
+from datetime import date, datetime, timedelta
 from typing import List, Optional
 from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from app.database import get_db
+from app.models.patient import Patient, PatientStatus
+from app.models.consultation import Consultation
+
+router = APIRouter(prefix="/api/doctor", tags=["Doctor Dashboard"])
 
 # Persistent In-Memory State Store for Interactive Modules
 STORE_APPOINTMENTS = [
@@ -226,6 +234,9 @@ class QueueReorderRequest(BaseModel):
 
 class QueueActionRequest(BaseModel):
     action: str  # "start" | "skip" | "complete" | "move_up" | "move_down"
+
+class LayoutPreferencesRequest(BaseModel):
+    widgets: List[dict]
 
 # Helper to generate live dynamic patient queue from database
 def build_dynamic_patient_queue(db: Session) -> List[dict]:

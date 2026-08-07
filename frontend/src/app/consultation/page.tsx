@@ -11,6 +11,7 @@ import { motion } from "framer-motion";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { API_BASE_URL } from "@/lib/api-client";
 
 function ConsultationContent() {
   const searchParams = useSearchParams();
@@ -141,7 +142,7 @@ function ConsultationContent() {
 
     try {
       // 1. Process Audio
-      const audioResponse = await fetch("http://localhost:8000/api/consultation/audio", {
+      const audioResponse = await fetch(`${API_BASE_URL}/api/consultation/audio`, {
         method: "POST",
         body: formData,
       });
@@ -152,7 +153,7 @@ function ConsultationContent() {
       setStatus("Generating Summary...");
 
       // 2. Generate Summary
-      const summaryResponse = await fetch("http://localhost:8000/api/consultation/summary", {
+      const summaryResponse = await fetch(`${API_BASE_URL}/api/consultation/summary`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ transcript: audioData.transcript }),
