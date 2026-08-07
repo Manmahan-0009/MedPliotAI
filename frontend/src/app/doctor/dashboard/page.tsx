@@ -30,6 +30,7 @@ import {
 import { API_BASE_URL } from "@/lib/api";
 import DoctorSidebar, { DoctorTabType } from "@/components/layout/DoctorSidebar";
 import DoctorTopbar from "@/components/layout/DoctorTopbar";
+import ClinicalIntelligenceReport, { ClinicalIntelligenceData } from "@/components/clinical/ClinicalIntelligenceReport";
 
 function DoctorDashboardContent() {
   const searchParams = useSearchParams();
@@ -61,6 +62,7 @@ function DoctorDashboardContent() {
   const [consultStatus, setConsultStatus] = useState("Idle");
   const [transcript, setTranscript] = useState("");
   const [summary, setSummary] = useState("");
+  const [clinicalReportData, setClinicalReportData] = useState<ClinicalIntelligenceData | null>(null);
   const [soapNotes, setSoapNotes] = useState<any>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -177,34 +179,11 @@ function DoctorDashboardContent() {
     try {
       const audioData = await consultationService.processAudio(audioBlob);
       setTranscript(audioData.transcript);
-      setConsultStatus("Generating AI Summary & SOAP...");
+      setConsultStatus("Generating Clinical Intelligence...");
 
       const summaryData = await consultationService.generateSummary(audioData.transcript);
-      setSummary(summaryData.summary);
-
-      // Create initial SOAP structure
-      setSoapNotes({
-        subjective: {
-          chief_complaint: "Dry cough & fever for past 3 days",
-          history: "No prior drug allergies. Denies shortness of breath."
-        },
-        objective: {
-          vitals: "BP: 120/80 mmHg, Temp: 100.4°F, SpO2: 98%",
-          physical_exam: "Clear lung fields bilaterally, mild pharyngeal erythema."
-        },
-        assessment: {
-          primary_diagnosis: "Acute Viral Upper Respiratory Infection",
-          differential: "Influenza A/B, Mild Bronchitis"
-        },
-        plan: {
-          medications: [
-            { name: "Amoxicillin 500mg", dosage: "1 cap", frequency: "BD", duration: "5 days" },
-            { name: "Paracetamol 650mg", dosage: "1 tab", frequency: "TDS", duration: "3 days" }
-          ],
-          follow_up: "Return in 5 days if fever persists."
-        }
-      });
-
+      setSummary(summaryData.summary || "");
+      setClinicalReportData(summaryData as any);
       setConsultStatus("Completed");
     } catch (error) {
       console.error(error);
@@ -212,16 +191,24 @@ function DoctorDashboardContent() {
     }
   };
 
-  const downloadReportPDF = async () => {
+  const downloadReportPDF = async (customReport?: ClinicalIntelligenceData) => {
     try {
       setConsultStatus("Generating PDF...");
+      const targetReport = customReport || clinicalReportData;
       const blob = await reportService.generatePdf({
         doctor_name: dashboardData?.doctor_profile?.full_name || "Dr. Sarah Mitchell",
         patient_name: selectedPatient ? `${selectedPatient.first_name} ${selectedPatient.last_name}` : "Rahul Sharma",
         date: new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }),
         transcript: transcript || "No transcript recorded.",
-        summary: summary || "No summary generated."
-      });
+        summary: summary || "No summary generated.",
+        soap_notes: targetReport?.soap_notes as any,
+        consultation_summary: targetReport?.consultation_summary as any,
+        ai_clinical_reasoning: targetReport?.ai_clinical_reasoning as any,
+        suggested_questions: targetReport?.suggested_questions as any,
+        recommended_tests: targetReport?.recommended_tests as any,
+        clinical_alerts: targetReport?.clinical_alerts as any,
+        doctor_review_status: targetReport?.doctor_review_status || "Approved"
+      } as any);
 
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -721,45 +708,22 @@ function DoctorDashboardContent() {
                       </div>
                     </div>
 
-                    {/* Right Column: Generated AI Summary & SOAP Editor */}
-                    <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col">
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-bold text-slate-800 dark:text-white text-sm">AI Clinical Summary & SOAP</h3>
-                        <span className="text-xs text-slate-400">Powered by Llama 3.3 70B</span>
-                      </div>
-
-                      <div className="flex-1 bg-slate-50 dark:bg-slate-800/40 rounded-xl p-4 text-xs space-y-4 overflow-y-auto mb-4">
-                        {summary ? (
-                          <>
-                            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800">
-                              ⚠️ AI Generated Clinical Draft. Doctor approval required.
-                            </div>
-                            <div className="whitespace-pre-line text-slate-700 dark:text-slate-300">{summary}</div>
-                          </>
-                        ) : (
-                          <div className="h-full flex items-center justify-center text-slate-400 italic">
-                            Structured AI summary will be generated after recording...
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-                        <button
-                          onClick={downloadReportPDF}
-                          disabled={!summary}
-                          className="px-4 py-2 bg-slate-800 text-white font-bold text-xs rounded-xl disabled:opacity-40 flex items-center gap-1.5"
-                        >
-                          <Download className="w-3.5 h-3.5" /> Download PDF
-                        </button>
-                        <button
-                          onClick={handleSaveEHR}
-                          disabled={!summary}
-                          className="px-5 py-2.5 bg-blue-600 text-white font-bold text-xs rounded-xl disabled:opacity-40 flex items-center gap-1.5"
-                        >
-                          <Send className="w-3.5 h-3.5" /> Save to EHR
-                        </button>
-                      </div>
+                    {/* Right Column: Upgraded Clinical Intelligence Report */}
+                    <div className="h-[700px] flex flex-col">
+                      <ClinicalIntelligenceReport
+                        data={clinicalReportData}
+                        isLoading={consultStatus.includes("Generating Clinical Intelligence")}
+                        onSaveToEHR={(updatedData) => {
+                          setClinicalReportData(updatedData);
+                          handleSaveEHR();
+                        }}
+                        onDownloadPDF={(updatedData) => {
+                          setClinicalReportData(updatedData);
+                          downloadReportPDF(updatedData);
+                        }}
+                        patientName={selectedPatient ? `${selectedPatient.first_name} ${selectedPatient.last_name}` : "Rahul Sharma"}
+                        doctorName={dashboardData?.doctor_profile?.full_name || "Dr. Sarah Mitchell"}
+                      />
                     </div>
                   </div>
                 </motion.div>
@@ -782,7 +746,7 @@ function DoctorDashboardContent() {
                         <div className="text-xs text-slate-500">Generated on {new Date().toLocaleDateString()} • Status: Approved</div>
                       </div>
                       <div className="flex gap-2">
-                        <button onClick={downloadReportPDF} className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-xl flex items-center gap-1">
+                        <button onClick={() => downloadReportPDF()} className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-xl flex items-center gap-1">
                           <Download className="w-3.5 h-3.5" /> PDF
                         </button>
                       </div>
@@ -878,7 +842,7 @@ function DoctorDashboardContent() {
                       ))}
                     </div>
 
-                    <button onClick={downloadReportPDF} className="w-full py-3 bg-blue-600 text-white font-bold text-xs rounded-xl shadow-xs">
+                    <button onClick={() => downloadReportPDF()} className="w-full py-3 bg-blue-600 text-white font-bold text-xs rounded-xl shadow-xs">
                       Download Complete Discharge PDF Package
                     </button>
                   </div>

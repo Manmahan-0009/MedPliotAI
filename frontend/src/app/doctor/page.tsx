@@ -11,6 +11,7 @@ import {
 import { motion } from "framer-motion";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense } from "react";
+import ClinicalIntelligenceReport, { ClinicalIntelligenceData } from "@/components/clinical/ClinicalIntelligenceReport";
 
 function ConsultationContent() {
   const searchParams = useSearchParams();
@@ -508,112 +509,16 @@ function ConsultationContent() {
 
             </div>
 
-            {/* Right Column: AI Summary */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col h-full overflow-hidden transition-colors">
-              <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-emerald-50/30 dark:bg-emerald-900/10">
-                <div className="text-emerald-700 dark:text-emerald-400 font-bold text-sm uppercase tracking-widest">
-                  AI Clinical Summary
-                </div>
-                <div className="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 font-bold text-[10px] px-2.5 py-1 rounded tracking-widest uppercase">
-                  Draft
-                </div>
-              </div>
-
-              {!summary ? (
-                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-50/50 dark:bg-slate-950/50">
-                   <ClipboardList className="w-12 h-12 text-slate-300 dark:text-slate-600 mb-4" />
-                   <p className="text-slate-500 dark:text-slate-400 font-medium max-w-sm leading-relaxed">
-                     The AI Clinical Summary, recommended tests, and notes will automatically generate here after the consultation ends.
-                   </p>
-                </div>
-              ) : (
-                <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
-                  
-                  {/* Warning */}
-                  <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/30 p-4 rounded-xl flex gap-3">
-                    <div className="text-amber-500 mt-0.5">⚠️</div>
-                    <p className="text-amber-800 dark:text-amber-300 text-sm font-medium">
-                      AI Generated Draft. Doctor approval required.<br/>
-                      <span className="font-normal">This is NOT a diagnosis.</span>
-                    </p>
-                  </div>
-
-                  {/* Summary Text Content - 2 Column Grid */}
-                  {isEditingSummary ? (
-                    <textarea 
-                      value={summary}
-                      onChange={(e) => setSummary(e.target.value)}
-                      className="w-full h-96 p-4 border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-950 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm text-slate-700 dark:text-slate-200 font-mono shadow-inner"
-                      placeholder="Edit the AI generated summary here..."
-                    />
-                  ) : (
-                    <div className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-200 leading-relaxed h-96 overflow-y-auto">
-                      {summary}
-                    </div>
-                  )}
-                  {/* Bottom Panels (Tests & Notes) */}
-                  <div className="grid grid-cols-2 gap-4 mt-4">
-                    {/* Tests */}
-                    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 shadow-sm">
-                      <h3 className="font-bold text-blue-600 dark:text-blue-400 text-sm mb-4">Recommended Tests</h3>
-                      <div className="space-y-3">
-                        {recommendedTests.length > 0 ? recommendedTests.map((test, index) => (
-                          <label key={index} className="flex items-start gap-3 text-sm text-slate-700 dark:text-slate-300 cursor-pointer group">
-                            <input type="checkbox" className="mt-1 rounded border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-blue-600 focus:ring-blue-500" />
-                            <span className="group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{test}</span>
-                          </label>
-                        )) : (
-                          <div className="text-sm text-slate-400 italic">No tests recommended.</div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Notes */}
-                    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 shadow-sm">
-                      <h3 className="font-bold text-emerald-600 dark:text-emerald-400 text-sm mb-4 flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4" /> Important Notes
-                      </h3>
-                      <ul className="list-disc list-inside text-sm text-slate-600 dark:text-slate-300 space-y-2.5 leading-relaxed">
-                        {importantNotes.length > 0 ? importantNotes.map((note, index) => (
-                          <li key={index}>{note}</li>
-                        )) : (
-                          <li className="text-slate-400 italic list-none">No important notes.</li>
-                        )}
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center gap-4">
-                {ehrStatus && (
-                  <div className="mr-auto text-emerald-600 dark:text-emerald-400 text-sm font-bold flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4" /> {ehrStatus}
-                  </div>
-                )}
-                <button 
-                  onClick={downloadPDF}
-                  disabled={!summary || status === "Generating PDF..." || isEditingSummary}
-                  className={`${ehrStatus ? '' : 'ml-auto'} px-6 py-3 bg-blue-600 text-white font-bold text-sm rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm shadow-blue-200 dark:shadow-none`}
-                >
-                  <Download className="w-4 h-4" /> Download PDF
-                </button>
-                <button 
-                  onClick={() => setIsEditingSummary(!isEditingSummary)}
-                  disabled={!summary}
-                  className={`px-6 py-3 border font-bold text-sm rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm ${isEditingSummary ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-300' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-700'}`}
-                >
-                  <Edit3 className="w-4 h-4" /> {isEditingSummary ? "Save Summary" : "Edit Summary"}
-                </button>
-                <button 
-                  onClick={handleSendEHR}
-                  disabled={!summary || isEditingSummary || ehrStatus !== ""}
-                  className="px-6 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 font-bold text-sm rounded-xl hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm"
-                >
-                  <Send className="w-4 h-4" /> Send to EHR
-                </button>
-              </div>
+            {/* Right Column: Upgraded Clinical Intelligence Report */}
+            <div className="h-[750px] flex flex-col">
+              <ClinicalIntelligenceReport
+                data={summary ? (summary as any) : null}
+                isLoading={status.includes("Generating")}
+                onSaveToEHR={() => handleSendEHR()}
+                onDownloadPDF={() => downloadPDF()}
+                patientName={patientName}
+                doctorName="Dr. Sarah Mitchell"
+              />
             </div>
 
           </div>
