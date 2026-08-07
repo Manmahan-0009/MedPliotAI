@@ -57,12 +57,18 @@ export interface DoctorDashboard {
     full_name: string;
     department?: string;
     specialization?: string;
+    medical_registration_number?: string;
   };
   todays_patients: Array<{
     id: string;
     patient_id: string;
     first_name: string;
     last_name: string;
+    age?: number;
+    gender?: string;
+    blood_group?: string;
+    phone?: string;
+    medical_conditions?: string;
     last_consultation?: string;
   }>;
   recent_consultations: Consultation[];
@@ -72,7 +78,32 @@ export interface DoctorDashboard {
     total_patients: number;
     consultations_this_week: number;
     consultations_today: number;
+    pending_reports?: number;
+    recovery_monitoring?: number;
+    discharges_today?: number;
+    ai_reports_generated?: number;
   };
+  recent_activity?: Array<{
+    id: string;
+    time: string;
+    type: string;
+    title: string;
+    description: string;
+  }>;
+  upcoming_appointments?: Array<{
+    id: string;
+    patient_name: string;
+    patient_id: string;
+    time: string;
+    type: string;
+    status: string;
+  }>;
+  todays_tasks?: Array<{
+    id: string;
+    title: string;
+    completed: boolean;
+    priority: string;
+  }>;
 }
 
 export interface PatientDashboard {
