@@ -2,12 +2,11 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { getPatients, searchPatients, deletePatient } from "@/lib/api";
+import { patientService } from "@/lib/api-services";
 import { Patient } from "@/lib/types";
 import { ProtectedRoute } from "@/lib/protected-route";
 
 function PatientsContent() {
-
   const router = useRouter();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
@@ -18,16 +17,19 @@ function PatientsContent() {
     setLoading(true);
     setError("");
     try {
-      const data = search.trim().length >= 1
-        ? await searchPatients(search.trim())
-        : await getPatients();
-      setPatients(data);
+      const res = await patientService.getPatients({
+        search: search.trim(),
+        limit: 50,
+      });
+      const items = Array.isArray(res) ? res : res.items || [];
+      setPatients(items);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to load patients");
     } finally {
       setLoading(false);
     }
   }, [search]);
+
 
   // Debounce search
   useEffect(() => {
@@ -38,12 +40,13 @@ function PatientsContent() {
   const handleDelete = async (id: string, patientId: string) => {
     if (!confirm(`Deactivate patient ${patientId}? This is reversible.`)) return;
     try {
-      await deletePatient(patientId);
+      await patientService.deletePatient(patientId);
       setPatients(prev => prev.filter(p => p.id !== id));
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : "Delete failed");
     }
   };
+
 
   const initials = (p: Patient) =>
     `${p.first_name[0]}${p.last_name[0]}`.toUpperCase();

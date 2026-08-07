@@ -39,4 +39,8 @@ class Patient(Base):
     # Relationships
     user = relationship("User", back_populates="patient_profile")
     consultations = relationship("Consultation", back_populates="patient", cascade="all, delete-orphan")
+    prescriptions = relationship("Prescription", back_populates="patient", cascade="all, delete-orphan")
+    recovery_metric = relationship("RecoveryMetric", back_populates="patient", uselist=False, cascade="all, delete-orphan")
+    discharges = relationship("Discharge", back_populates="patient", cascade="all, delete-orphan")
+    invoices = relationship("Invoice", back_populates="patient", cascade="all, delete-orphan")
 

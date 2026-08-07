@@ -2,12 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { getPatient } from "@/lib/api";
+import { patientService } from "@/lib/api-services";
 import { PatientWithConsultations } from "@/lib/types";
 import { ProtectedRoute } from "@/lib/protected-route";
 
 function PatientDetailContent() {
-
   const router = useRouter();
   const params = useParams();
   const patientId = params?.id as string;
@@ -20,11 +19,12 @@ function PatientDetailContent() {
   useEffect(() => {
     if (!patientId) return;
     setLoading(true);
-    getPatient(patientId)
+    patientService.getPatient(patientId)
       .then(setPatient)
       .catch(e => setError(e.message || "Failed to load patient"))
       .finally(() => setLoading(false));
   }, [patientId]);
+
 
   if (loading) {
     return (

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, Suspense } from "react";
+import React, { useState, useRef, useEffect, Suspense } from "react";
 import { 
   Mic, Square, Download, Play, Pause, FileText, Users, Calendar, Folder, 
   LayoutTemplate, LineChart, Settings, ShieldCheck, Lock, Activity, 
@@ -12,15 +12,37 @@ import { motion } from "framer-motion";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useAuth } from "@/lib/auth-context";
+import { doctorService } from "@/lib/api-services";
+import { DoctorDashboard } from "@/lib/types";
 import { API_BASE_URL } from "@/lib/api";
+
 
 function DoctorDashboardContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { userProfile, logout } = useAuth();
-  
-  const doctorName = userProfile?.doctor_profile?.full_name || "Dr. Sarah Mitchell";
-  const doctorDept = userProfile?.doctor_profile?.department || "General Medicine";
+
+  const [dashboardData, setDashboardData] = useState<DoctorDashboard | null>(null);
+  const [dataLoading, setDataLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    doctorService.getDashboard()
+      .then((data) => {
+        if (isMounted) {
+          setDashboardData(data);
+          setDataLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load doctor dashboard:", err);
+        if (isMounted) setDataLoading(false);
+      });
+    return () => { isMounted = false; };
+  }, []);
+
+  const doctorName = userProfile?.doctor_profile?.full_name || dashboardData?.doctor_profile?.full_name || "Dr. Sarah Mitchell";
+  const doctorDept = userProfile?.doctor_profile?.department || dashboardData?.doctor_profile?.department || "General Medicine";
 
   const patientId = searchParams.get("patient") || "MP-2026-8942";
   const patientName = searchParams.get("name") || "Rahul Sharma";
@@ -34,6 +56,7 @@ function DoctorDashboardContent() {
   const [timer, setTimer] = useState(0);
   const [ehrStatus, setEhrStatus] = useState("");
   const [isDarkMode, setIsDarkMode] = useState(false);
+
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);

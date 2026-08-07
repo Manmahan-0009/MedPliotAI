@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createPatient } from "@/lib/api";
+import { patientService } from "@/lib/api-services";
 import { PatientCreate } from "@/lib/types";
 import { ProtectedRoute } from "@/lib/protected-route";
 
@@ -10,8 +10,6 @@ const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 const GENDERS = ["Male", "Female", "Other", "Prefer not to say"];
 
 function NewPatientContent() {
-
-
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -57,7 +55,7 @@ function NewPatientContent() {
         medical_conditions: form.medical_conditions || undefined,
         current_medications: form.current_medications || undefined,
       };
-      const created = await createPatient(payload);
+      const created = await patientService.createPatient(payload);
       router.push(`/patients/${created.patient_id}`);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to create patient");
@@ -65,6 +63,7 @@ function NewPatientContent() {
       setLoading(false);
     }
   };
+
 
   const Field = ({
     label, name, type = "text", required = false,

@@ -1,6 +1,6 @@
 // Firebase client SDK initialization (frontend only)
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, setPersistence, browserLocalPersistence } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
@@ -15,4 +15,12 @@ const firebaseConfig = {
 // Prevent duplicate initialization in Next.js dev hot-reload
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+
+// Explicit LOCAL persistence — survives refresh, back/forward, tabs, idle
+if (typeof window !== "undefined") {
+  setPersistence(auth, browserLocalPersistence).catch((err) => {
+    console.error("Firebase persistence setup failed:", err);
+  });
+}
+
 export default app;

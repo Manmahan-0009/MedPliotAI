@@ -1,26 +1,26 @@
-// API client — all backend calls go through here
-import { Patient, PatientCreate, PatientWithConsultations, Consultation } from "./types";
+// Re-export API client + legacy helpers — use service modules for new code
+export { API_BASE_URL, API_URL, apiFetch, apiFetchBlob, ApiError } from "./api-client";
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-export const API_URL = API_BASE_URL;
-
-
-async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
-    headers: { "Content-Type": "application/json", ...options?.headers },
-    ...options,
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || "API error");
-  }
-  return res.json();
-}
+import { apiFetch, apiFetchBlob } from "./api-client";
+import {
+  Patient,
+  PatientCreate,
+  PatientWithConsultations,
+  Consultation,
+  DoctorDashboard,
+  PatientDashboard,
+  Prescription,
+  PrescriptionUpdate,
+  RecoveryData,
+  PharmacyData,
+  DischargeData,
+  ReportDocument,
+} from "./types";
 
 // ── Patients ─────────────────────────────────────────────────────────────────
 
-export const getPatients = (): Promise<Patient[]> =>
-  apiFetch("/api/patients");
+export const getPatients = (skip = 0, limit = 50): Promise<Patient[]> =>
+  apiFetch(`/api/patients?skip=${skip}&limit=${limit}`);
 
 export const searchPatients = (q: string): Promise<Patient[]> =>
   apiFetch(`/api/patients/search?q=${encodeURIComponent(q)}`);
@@ -50,3 +50,83 @@ export const saveConsultation = (data: {
 
 export const getPatientConsultations = (patientId: string): Promise<Consultation[]> =>
   apiFetch(`/api/consultations/patient/${patientId}`);
+
+export const processConsultationAudio = (file: Blob): Promise<{ transcript: string }> => {
+  const formData = new FormData();
+  formData.append("file", file, "consultation.webm");
+  return apiFetch("/api/consultation/audio", { method: "POST", body: formData });
+};
+
+export const generateConsultationSummary = (transcript: string): Promise<{
+  summary: string;
+  recommended_tests?: string[];
+  important_notes?: string[];
+}> =>
+  apiFetch("/api/consultation/summary", {
+    method: "POST",
+    body: JSON.stringify({ transcript }),
+  });
+
+export const downloadConsultationPdf = (data: {
+  doctor_name: string;
+  patient_name: string;
+  date: string;
+  transcript: string;
+  summary: string;
+}): Promise<Blob> =>
+  apiFetchBlob("/api/report/pdf", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+// ── Dashboards ────────────────────────────────────────────────────────────────
+
+export const getDoctorDashboard = (): Promise<DoctorDashboard> =>
+  apiFetch("/api/doctor/dashboard");
+
+export const getPatientDashboard = (): Promise<PatientDashboard> =>
+  apiFetch("/api/patient/dashboard");
+
+// ── Prescriptions ─────────────────────────────────────────────────────────────
+
+export const getPrescription = (patientId?: string): Promise<Prescription> => {
+  const query = patientId ? `?patient_id=${encodeURIComponent(patientId)}` : "";
+  return apiFetch(`/api/prescriptions${query}`);
+};
+
+export const updatePrescription = (
+  prescriptionId: string,
+  data: PrescriptionUpdate
+): Promise<Prescription> =>
+  apiFetch(`/api/prescriptions/${prescriptionId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+
+// ── Recovery ─────────────────────────────────────────────────────────────────
+
+export const getRecoveryData = (): Promise<RecoveryData> =>
+  apiFetch("/api/patient/recovery");
+
+// ── Pharmacy ─────────────────────────────────────────────────────────────────
+
+export const getPharmacyData = (): Promise<PharmacyData> =>
+  apiFetch("/api/patient/pharmacy");
+
+// ── Discharge ─────────────────────────────────────────────────────────────────
+
+export const getDischargeData = (): Promise<DischargeData> =>
+  apiFetch("/api/patient/discharge");
+
+// ── Reports ───────────────────────────────────────────────────────────────────
+
+export const getPatientReports = (): Promise<ReportDocument[]> =>
+  apiFetch("/api/patient/reports");
+
+export const downloadReport = (reportId: string): Promise<Blob> =>
+  apiFetchBlob(`/api/patient/reports/${reportId}/download`);
+
+// ── Profile ───────────────────────────────────────────────────────────────────
+
+export const getPatientProfileDetails = (): Promise<Patient> =>
+  apiFetch("/api/patient/profile");

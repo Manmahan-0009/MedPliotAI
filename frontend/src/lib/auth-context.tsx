@@ -1,15 +1,17 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useRef } from "react";
+import React, { createContext, useContext, useEffect, useState, useRef, useCallback } from "react";
 import {
   onAuthStateChanged,
+  onIdTokenChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
   User as FirebaseUser,
 } from "firebase/auth";
 import { auth } from "./firebase";
-import { API_BASE_URL } from "./api";
+import { API_BASE_URL } from "./api-client";
+import { registerTokenGetter, registerUnauthorizedHandler } from "./token-manager";
 
 export type UserRole = "doctor" | "patient" | null;
 
@@ -34,8 +36,10 @@ export interface UserProfile {
   } | null;
 }
 
-// ─── localStorage helpers ────────────────────────────────────────────────────
 const STORAGE_KEY = "medipilot_session_v2";
+const SESSION_TYPE_KEY = "medipilot_session_type";
+
+type SessionType = "firebase" | "db";
 
 function loadSession(): UserProfile | null {
   if (typeof window === "undefined") return null;
@@ -47,24 +51,31 @@ function loadSession(): UserProfile | null {
   }
 }
 
-function saveSession(profile: UserProfile): void {
+function loadSessionType(): SessionType | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(SESSION_TYPE_KEY) as SessionType | null;
+}
+
+function saveSession(profile: UserProfile, sessionType: SessionType): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+    localStorage.setItem(SESSION_TYPE_KEY, sessionType);
   } catch {}
 }
 
 function clearSession(): void {
   try {
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(SESSION_TYPE_KEY);
   } catch {}
 }
-// ─────────────────────────────────────────────────────────────────────────────
 
 interface AuthContextType {
   firebaseUser: FirebaseUser | null;
   userProfile: UserProfile | null;
   role: UserRole;
   loading: boolean;
+  getAccessToken: (forceRefresh?: boolean) => Promise<string | null>;
   login: (email: string, pass: string) => Promise<UserProfile | null>;
   signupDoctor: (data: {
     email: string;
@@ -95,6 +106,7 @@ const AuthContext = createContext<AuthContextType>({
   userProfile: null,
   role: null,
   loading: true,
+  getAccessToken: async () => null,
   login: async () => null,
   signupDoctor: async () => {},
   signupPatient: async () => {},
@@ -103,37 +115,38 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  // ─── Synchronous initialisation from localStorage ─────────────────────────
-  // These run BEFORE the first render, so ProtectedRoute never sees an empty
-  // userProfile on page-refresh when a session is stored.
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(() => loadSession());
-  const [role, setRole] = useState<UserRole>(() => loadSession()?.role ?? null);
+  const storedSession = loadSession();
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(() => storedSession);
+  const [role, setRole] = useState<UserRole>(() => storedSession?.role ?? null);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
 
-  // Start loading=true only if we don't already have a stored session.
-  // If we have a session we can show the UI immediately and confirm in the background.
-  const [loading, setLoading] = useState<boolean>(!loadSession());
+  const authReadyRef = useRef(false);
+  const dbSessionActive = useRef<boolean>(loadSessionType() === "db" && Boolean(storedSession));
+  const firebaseUserRef = useRef<FirebaseUser | null>(null);
 
-  // Ref flag: true when auth state comes from DB (not real Firebase).
-  // Prevents onAuthStateChanged(null) from wiping a valid DB session.
-  const dbSessionActive = useRef<boolean>(Boolean(loadSession()));
-  // ─────────────────────────────────────────────────────────────────────────
-
-  const applyProfile = (profile: UserProfile) => {
+  const applyProfile = useCallback((profile: UserProfile, sessionType: SessionType) => {
     setUserProfile(profile);
     setRole(profile.role);
-    saveSession(profile);
-  };
+    saveSession(profile, sessionType);
+    if (sessionType === "db") {
+      dbSessionActive.current = true;
+    }
+  }, []);
 
-  const fetchUserProfile = async (token: string): Promise<UserProfile | null> => {
+  const fetchUserProfile = useCallback(async (token: string): Promise<UserProfile | null> => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
         const data: UserProfile = await res.json();
-        applyProfile(data);
+        applyProfile(data, "firebase");
+        dbSessionActive.current = false;
         return data;
+      }
+      if (res.status === 401) {
+        return null;
       }
       console.warn("Profile fetch failed:", await res.text());
       return null;
@@ -141,57 +154,151 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.error("fetchUserProfile error:", err);
       return null;
     }
-  };
+  }, [applyProfile]);
 
-  // ─── Firebase Auth state listener ─────────────────────────────────────────
+  const getAccessToken = useCallback(async (forceRefresh = false): Promise<string | null> => {
+    const fbUser = firebaseUserRef.current;
+    if (fbUser) {
+      try {
+        return await fbUser.getIdToken(forceRefresh);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }, []);
+
+  const handleLogout = useCallback(async () => {
+    dbSessionActive.current = false;
+    authReadyRef.current = false;
+    clearSession();
+    firebaseUserRef.current = null;
+    registerTokenGetter(async () => null);
+    try {
+      await firebaseSignOut(auth);
+    } catch {}
+    setFirebaseUser(null);
+    setUserProfile(null);
+    setRole(null);
+  }, []);
+
+  // Register token getter + 401 handler for API client
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
-      if (fbUser) {
-        // Real Firebase user — always wins
+    registerTokenGetter(getAccessToken);
+    registerUnauthorizedHandler(() => {
+      if (firebaseUserRef.current) {
+        handleLogout();
+      }
+    });
+  }, [getAccessToken, handleLogout]);
+
+  // Initialize Firebase auth — wait for persisted session restore
+  useEffect(() => {
+    let mounted = true;
+
+    const initAuth = async () => {
+      try {
+        await auth.authStateReady();
+      } catch (e) {
+        console.error("authStateReady error:", e);
+      }
+
+      if (!mounted) return;
+      authReadyRef.current = true;
+
+      const currentUser = auth.currentUser;
+      if (currentUser) {
         dbSessionActive.current = false;
+        firebaseUserRef.current = currentUser;
+        setFirebaseUser(currentUser);
+        try {
+          const token = await currentUser.getIdToken();
+          const profile = await fetchUserProfile(token);
+          if (!profile && storedSession) {
+            setUserProfile(storedSession);
+            setRole(storedSession.role);
+          }
+        } catch (e) {
+          console.error("Initial token/profile error:", e);
+          if (storedSession) {
+            setUserProfile(storedSession);
+            setRole(storedSession.role);
+          }
+        }
+      } else if (dbSessionActive.current && storedSession) {
+        setUserProfile(storedSession);
+        setRole(storedSession.role);
+      } else {
+        clearSession();
+        setUserProfile(null);
+        setRole(null);
+      }
+
+      if (mounted) setLoading(false);
+    };
+
+    initAuth();
+
+    const unsubAuth = onAuthStateChanged(auth, async (fbUser) => {
+      if (!authReadyRef.current) return;
+
+      if (fbUser) {
+        dbSessionActive.current = false;
+        firebaseUserRef.current = fbUser;
         setFirebaseUser(fbUser);
         try {
           const token = await fbUser.getIdToken();
           await fetchUserProfile(token);
         } catch (e) {
-          console.error("Token/profile error:", e);
+          console.error("Auth state profile error:", e);
         }
         setLoading(false);
-      } else {
-        // No Firebase user. Only clear if no DB session is active.
-        if (!dbSessionActive.current) {
-          setFirebaseUser(null);
-          setUserProfile(null);
-          setRole(null);
-          clearSession();
-        }
-        setLoading(false);
+        return;
+      }
+
+      // Firebase reported no user — only clear if not a DB fallback session
+      if (!dbSessionActive.current) {
+        firebaseUserRef.current = null;
+        setFirebaseUser(null);
+        setUserProfile(null);
+        setRole(null);
+        clearSession();
+      }
+      setLoading(false);
+    });
+
+    const unsubToken = onIdTokenChanged(auth, (fbUser) => {
+      if (fbUser) {
+        firebaseUserRef.current = fbUser;
+        setFirebaseUser(fbUser);
       }
     });
-    return () => unsubscribe();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  // ─────────────────────────────────────────────────────────────────────────
 
-  // ─── Login ────────────────────────────────────────────────────────────────
+    return () => {
+      mounted = false;
+      unsubAuth();
+      unsubToken();
+    };
+  }, [fetchUserProfile, storedSession]);
+
   const login = async (email: string, pass: string): Promise<UserProfile | null> => {
     setLoading(true);
     try {
-      // Try Firebase first
       const cred = await signInWithEmailAndPassword(auth, email, pass);
+      firebaseUserRef.current = cred.user;
       setFirebaseUser(cred.user);
       const token = await cred.user.getIdToken();
       const profile = await fetchUserProfile(token);
       setLoading(false);
       return profile;
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const fbErr = err as { code?: string };
       const isConfigError =
-        err?.code === "auth/configuration-not-found" ||
-        err?.code === "auth/internal-error" ||
-        err?.code === "auth/operation-not-allowed";
+        fbErr?.code === "auth/configuration-not-found" ||
+        fbErr?.code === "auth/internal-error" ||
+        fbErr?.code === "auth/operation-not-allowed";
 
       if (isConfigError) {
-        // Firebase Email/Password provider not enabled → verify via DB
         const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -211,8 +318,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         const profileData: UserProfile = await res.json();
         dbSessionActive.current = true;
-        setFirebaseUser({ uid: profileData.firebase_uid, email: profileData.email } as any);
-        applyProfile(profileData);
+        firebaseUserRef.current = null;
+        setFirebaseUser(null);
+        applyProfile(profileData, "db");
         return profileData;
       }
 
@@ -220,9 +328,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       throw err;
     }
   };
-  // ─────────────────────────────────────────────────────────────────────────
 
-  // ─── Signup – Doctor ──────────────────────────────────────────────────────
   const signupDoctor = async (data: {
     email: string;
     pass: string;
@@ -239,12 +345,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       const cred = await createUserWithEmailAndPassword(auth, data.email, data.pass);
       uid = cred.user.uid;
+      firebaseUserRef.current = cred.user;
       setFirebaseUser(cred.user);
       isRealFirebase = true;
-    } catch (fbErr: any) {
+    } catch (fbErr: unknown) {
+      const code = (fbErr as { code?: string })?.code;
       const configErr =
-        fbErr?.code === "auth/configuration-not-found" ||
-        fbErr?.code === "auth/operation-not-allowed";
+        code === "auth/configuration-not-found" || code === "auth/operation-not-allowed";
       if (!configErr) {
         setLoading(false);
         throw fbErr;
@@ -274,20 +381,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       const profileData: UserProfile = await res.json();
-      if (!isRealFirebase) {
+      if (isRealFirebase) {
+        const token = await firebaseUserRef.current?.getIdToken();
+        if (token) await fetchUserProfile(token);
+        applyProfile(profileData, "firebase");
+      } else {
         dbSessionActive.current = true;
-        setFirebaseUser({ uid: profileData.firebase_uid, email: profileData.email } as any);
+        applyProfile(profileData, "db");
       }
-      applyProfile(profileData);
       setLoading(false);
     } catch (err) {
       setLoading(false);
       throw err;
     }
   };
-  // ─────────────────────────────────────────────────────────────────────────
 
-  // ─── Signup – Patient ─────────────────────────────────────────────────────
   const signupPatient = async (data: {
     email: string;
     pass: string;
@@ -306,12 +414,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       const cred = await createUserWithEmailAndPassword(auth, data.email, data.pass);
       uid = cred.user.uid;
+      firebaseUserRef.current = cred.user;
       setFirebaseUser(cred.user);
       isRealFirebase = true;
-    } catch (fbErr: any) {
+    } catch (fbErr: unknown) {
+      const code = (fbErr as { code?: string })?.code;
       const configErr =
-        fbErr?.code === "auth/configuration-not-found" ||
-        fbErr?.code === "auth/operation-not-allowed";
+        code === "auth/configuration-not-found" || code === "auth/operation-not-allowed";
       if (!configErr) {
         setLoading(false);
         throw fbErr;
@@ -343,31 +452,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       const profileData: UserProfile = await res.json();
-      if (!isRealFirebase) {
+      if (isRealFirebase) {
+        const token = await firebaseUserRef.current?.getIdToken();
+        if (token) await fetchUserProfile(token);
+        applyProfile(profileData, "firebase");
+      } else {
         dbSessionActive.current = true;
-        setFirebaseUser({ uid: profileData.firebase_uid, email: profileData.email } as any);
+        applyProfile(profileData, "db");
       }
-      applyProfile(profileData);
       setLoading(false);
     } catch (err) {
       setLoading(false);
       throw err;
     }
   };
-  // ─────────────────────────────────────────────────────────────────────────
 
-  // ─── Logout ───────────────────────────────────────────────────────────────
-  const logout = async () => {
-    dbSessionActive.current = false;
-    clearSession();
-    try {
-      await firebaseSignOut(auth);
-    } catch {}
-    setFirebaseUser(null);
-    setUserProfile(null);
-    setRole(null);
-  };
-  // ─────────────────────────────────────────────────────────────────────────
+  const logout = handleLogout;
 
   return (
     <AuthContext.Provider
@@ -376,6 +476,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         userProfile,
         role,
         loading,
+        getAccessToken,
         login,
         signupDoctor,
         signupPatient,
