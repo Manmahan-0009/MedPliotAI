@@ -8,11 +8,13 @@ from app.database import Base
 
 class Discharge(Base):
     __tablename__ = "discharges"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     patient_id = Column(UUID(as_uuid=True), ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True)
-    consultation_id = Column(UUID(as_uuid=True), ForeignKey("consultations.id", ondelete="CASCADE"), nullable=False, index=True)
+    consultation_id = Column(UUID(as_uuid=True), ForeignKey("consultations.id", ondelete="CASCADE"), nullable=True, index=True)
     
+    doctor_name = Column(String(200), nullable=True)
     discharge_summary = Column(Text, nullable=True)
     patient_instructions = Column(Text, nullable=True)
     lifestyle_advice = Column(Text, nullable=True)
@@ -29,6 +31,7 @@ class Discharge(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Relationship
+    # Relationships
     patient = relationship("Patient", back_populates="discharges")
     consultation = relationship("Consultation", back_populates="discharge")
+    invoices = relationship("Invoice", back_populates="discharge", cascade="all, delete-orphan")

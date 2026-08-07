@@ -6,22 +6,6 @@ from sqlalchemy.orm import relationship
 from app.database import Base
 
 
-class Prescription(Base):
-    __tablename__ = "prescriptions"
-    __table_args__ = {'extend_existing': True}
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    patient_id = Column(UUID(as_uuid=True), ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True)
-    doctor_name = Column(String(200), nullable=True)
-    prescription_date = Column(DateTime, default=datetime.utcnow)
-    status = Column(String(50), default="active")
-    items = Column(JSONB, nullable=False, default=list)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    patient = relationship("Patient", back_populates="prescriptions")
-
-
 class RecoveryMetric(Base):
     __tablename__ = "recovery_metrics"
     __table_args__ = {'extend_existing': True}
@@ -40,21 +24,7 @@ class RecoveryMetric(Base):
     patient = relationship("Patient", back_populates="recovery_metric")
 
 
-class Discharge(Base):
-    __tablename__ = "discharges"
-    __table_args__ = {'extend_existing': True}
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    patient_id = Column(UUID(as_uuid=True), ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True)
-    doctor_name = Column(String(200), nullable=True)
-    discharge_summary = Column(Text, nullable=True)
-    discharge_date = Column(DateTime, nullable=True)
-    status = Column(String(50), default="pending")
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    patient = relationship("Patient", back_populates="discharges")
-    invoices = relationship("Invoice", back_populates="discharge", cascade="all, delete-orphan")
+from app.models.discharge import Discharge
 
 
 class Invoice(Base):

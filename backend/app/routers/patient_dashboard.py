@@ -39,7 +39,7 @@ def _get_demo_patient(db: Session) -> Patient:
 @router.get("/patient/dashboard")
 def get_patient_dashboard(db: Session = Depends(get_db)):
     patient = _get_demo_patient(db)
-    consultations = db.query(Consultation).filter(Consultation.patient_id == patient.patient_id).all()
+    consultations = db.query(Consultation).filter(Consultation.patient_id == patient.id).all()
 
     return {
         "profile": {
@@ -220,7 +220,7 @@ def get_patient_discharge(db: Session = Depends(get_db)):
 @router.get("/patient/reports")
 def get_patient_reports(db: Session = Depends(get_db)):
     patient = _get_demo_patient(db)
-    consultations = db.query(Consultation).filter(Consultation.patient_id == patient.patient_id).all()
+    consultations = db.query(Consultation).filter(Consultation.patient_id == patient.id).all()
 
     reports = []
     for c in consultations:

@@ -285,49 +285,66 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const login = async (email: string, pass: string): Promise<UserProfile | null> => {
     setLoading(true);
+    let fbProfile: UserProfile | null = null;
+    let fbError: unknown = null;
+
     try {
       const cred = await signInWithEmailAndPassword(auth, email, pass);
       firebaseUserRef.current = cred.user;
       setFirebaseUser(cred.user);
       const token = await cred.user.getIdToken();
-      const profile = await fetchUserProfile(token);
-      setLoading(false);
-      return profile;
-    } catch (err: unknown) {
-      const fbErr = err as { code?: string };
-      const isConfigError =
-        fbErr?.code === "auth/configuration-not-found" ||
-        fbErr?.code === "auth/internal-error" ||
-        fbErr?.code === "auth/operation-not-allowed";
-
-      if (isConfigError) {
-        const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password: pass }),
-        });
-
+      fbProfile = await fetchUserProfile(token);
+      if (fbProfile) {
         setLoading(false);
+        return fbProfile;
+      }
+    } catch (err: unknown) {
+      fbError = err;
+      console.warn("Firebase auth notice, trying backend authentication:", err);
+    }
 
-        if (!res.ok) {
-          let msg = "Invalid email or password";
-          try {
-            const body = await res.json();
-            msg = body.detail || msg;
-          } catch {}
-          throw new Error(msg);
-        }
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password: pass }),
+      });
 
+      if (res.ok) {
         const profileData: UserProfile = await res.json();
         dbSessionActive.current = true;
         firebaseUserRef.current = null;
         setFirebaseUser(null);
         applyProfile(profileData, "db");
+        setLoading(false);
         return profileData;
+      } else {
+        let msg = "Invalid email or password";
+        try {
+          const body = await res.json();
+          msg = body.detail || msg;
+        } catch {}
+        setLoading(false);
+        throw new Error(msg);
       }
-
+    } catch (dbErr: any) {
       setLoading(false);
-      throw err;
+      if (dbErr instanceof TypeError && (dbErr.message?.includes("fetch") || dbErr.message?.includes("Failed"))) {
+        throw new Error(`Unable to connect to backend server (${API_BASE_URL}). Please verify backend server is running.`);
+      }
+      if (dbErr.message && dbErr.message !== "Failed to fetch") {
+        throw dbErr;
+      }
+      if (fbError) {
+        const fbCode = (fbError as { code?: string })?.code;
+        if (fbCode === "auth/invalid-credential" || fbCode === "auth/user-not-found" || fbCode === "auth/wrong-password") {
+          throw new Error("Invalid email or password.");
+        }
+        if (fbCode === "auth/invalid-email") {
+          throw new Error("Invalid email format.");
+        }
+      }
+      throw dbErr;
     }
   };
 
