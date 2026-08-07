@@ -2,9 +2,14 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 import { Stethoscope, ArrowLeft, Mail, Lock, ShieldCheck, User, Phone, Calendar, Briefcase, Building } from "lucide-react";
 
 export default function SignUpPage() {
+  const router = useRouter();
+  const { signupDoctor, signupPatient } = useAuth();
+
   const [role, setRole] = useState<"doctor" | "patient">("patient");
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -60,14 +65,45 @@ export default function SignUpPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (validate()) {
-      setIsSubmitted(true);
-      setTimeout(() => {
-        setIsSubmitted(false);
-        alert(`Account registration for ${role} will be connected later.`);
-      }, 1000);
+    if (!validate()) return;
+
+    setIsSubmitted(true);
+    setErrors({});
+
+    try {
+      if (role === "doctor") {
+        await signupDoctor({
+          email: formData.email,
+          pass: formData.password,
+          full_name: formData.fullName,
+          department: formData.clinicName,
+          specialization: formData.specialization,
+          medical_registration_number: formData.licenseNumber,
+          phone: formData.phone,
+        });
+        router.push("/doctor/dashboard");
+      } else {
+        const parts = formData.fullName.trim().split(" ");
+        const firstName = parts[0] || "Patient";
+        const lastName = parts.slice(1).join(" ") || "User";
+        await signupPatient({
+          email: formData.email,
+          pass: formData.password,
+          first_name: firstName,
+          last_name: lastName,
+          date_of_birth: formData.dob || undefined,
+          gender: formData.gender || undefined,
+          phone: formData.phone || undefined,
+        });
+        router.push("/patient/dashboard");
+      }
+    } catch (err: any) {
+      console.error("Signup error:", err);
+      setErrors({ general: err.message || "Registration failed. Please check your information." });
+    } finally {
+      setIsSubmitted(false);
     }
   };
 
@@ -148,6 +184,12 @@ export default function SignUpPage() {
               <span className="font-bold text-sm">Patient</span>
             </button>
           </div>
+
+          {errors.general && (
+            <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm font-medium">
+              ⚠️ {errors.general}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Common Fields */}

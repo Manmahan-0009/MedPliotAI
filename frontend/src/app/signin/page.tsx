@@ -2,17 +2,22 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Stethoscope, ArrowLeft, Mail, Lock, ShieldCheck } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 
 export default function SignInPage() {
+  const router = useRouter();
+  const { login } = useAuth();
+
   const [role, setRole] = useState<"doctor" | "patient">("patient");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string }>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   const validate = () => {
-    const newErrors: { email?: string; password?: string } = {};
+    const newErrors: { email?: string; password?: string; general?: string } = {};
     if (!email) {
       newErrors.email = "Please enter your email.";
     } else if (!/\S+@\S+\.\S+/.test(email)) {
@@ -27,14 +32,24 @@ export default function SignInPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (validate()) {
-      setIsSubmitted(true);
-      setTimeout(() => {
-        setIsSubmitted(false);
-        alert("Authentication will be connected later.");
-      }, 1000);
+    if (!validate()) return;
+
+    setIsSubmitted(true);
+    setErrors({});
+    try {
+      const profile = await login(email, password);
+      if (profile?.role === "doctor" || role === "doctor") {
+        router.push("/doctor/dashboard");
+      } else {
+        router.push("/patient/dashboard");
+      }
+    } catch (err: any) {
+      console.error("Login error:", err);
+      setErrors({ general: err.message || "Invalid credentials. Please try again." });
+    } finally {
+      setIsSubmitted(false);
     }
   };
 
@@ -116,6 +131,12 @@ export default function SignInPage() {
               </button>
             </div>
           </div>
+
+          {errors.general && (
+            <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm font-medium">
+              ⚠️ {errors.general}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
