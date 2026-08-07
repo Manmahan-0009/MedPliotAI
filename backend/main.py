@@ -1,6 +1,7 @@
 import os
 import uuid
 import shutil
+import json
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -71,15 +72,11 @@ async def generate_summary(req: SummaryRequest):
     prompt = f"""
     You are an AI medical assistant. Generate a structured clinical consultation summary based on the following transcript.
     Do NOT invent information. Do NOT diagnose. Do NOT prescribe. Only summarize the transcript.
-    Format the response clearly with the following headings:
-    - Chief Complaint
-    - History
-    - Symptoms Mentioned
-    - Duration
-    - Possible Clinical Summary
-    - Suggested Follow-up Questions
-    - Recommended Tests
-    - Important Notes
+    
+    You MUST respond in valid JSON format with exactly three keys:
+    1. "summary": A well-formatted markdown string containing the Chief Complaint, History, Symptoms Mentioned, Duration, Possible Clinical Summary, and Suggested Follow-up Questions.
+    2. "recommended_tests": A JSON list of strings, each being a short recommended test.
+    3. "important_notes": A JSON list of strings, each being a short important note.
 
     Transcript:
     {req.transcript}
@@ -88,13 +85,15 @@ async def generate_summary(req: SummaryRequest):
     try:
         response = client.chat.completions.create(
             messages=[
-                {"role": "system", "content": "You are a helpful and precise medical assistant."},
+                {"role": "system", "content": "You are a helpful and precise medical assistant. You output valid JSON."},
                 {"role": "user", "content": prompt}
             ],
             model="llama-3.3-70b-versatile",
             temperature=0.2,
+            response_format={"type": "json_object"},
         )
-        return {"summary": response.choices[0].message.content}
+        data = json.loads(response.choices[0].message.content)
+        return data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

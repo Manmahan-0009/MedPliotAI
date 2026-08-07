@@ -5,7 +5,8 @@ import {
   Mic, Square, Download, Play, Pause, FileText, Users, Calendar, Folder, 
   LayoutTemplate, LineChart, Settings, ShieldCheck, Lock, Activity, 
   UserCircle, Stethoscope, FilePlus, ChevronRight, CheckCircle2, History,
-  Send, Edit3, ClipboardList, BookOpen, User, Check, ChevronDown, Trash2
+  Send, Edit3, ClipboardList, BookOpen, User, Check, ChevronDown, Trash2,
+  Moon, Sun
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -13,17 +14,24 @@ export default function AI_Consultation_V2() {
   const [status, setStatus] = useState("Idle"); 
   const [transcript, setTranscript] = useState("");
   const [summary, setSummary] = useState("");
+  const [recommendedTests, setRecommendedTests] = useState<string[]>([]);
+  const [importantNotes, setImportantNotes] = useState<string[]>([]);
   const [timer, setTimer] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isEditingSummary, setIsEditingSummary] = useState(false);
   const [ehrStatus, setEhrStatus] = useState("");
+  const [isDarkMode, setIsDarkMode] = useState(false);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    // Check system preference on load
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      setIsDarkMode(true);
+    }
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     };
@@ -106,6 +114,8 @@ export default function AI_Consultation_V2() {
   const clearRecording = () => {
     setTranscript("");
     setSummary("");
+    setRecommendedTests([]);
+    setImportantNotes([]);
     setTimer(0);
     setStatus("Idle");
   };
@@ -138,6 +148,8 @@ export default function AI_Consultation_V2() {
       
       const summaryData = await summaryResponse.json();
       setSummary(summaryData.summary);
+      setRecommendedTests(summaryData.recommended_tests || []);
+      setImportantNotes(summaryData.important_notes || []);
       setStatus("Completed");
 
     } catch (error) {
@@ -179,117 +191,128 @@ export default function AI_Consultation_V2() {
   };
 
   return (
-    <div className="flex h-screen bg-[#f9fafb] font-sans text-slate-800 overflow-hidden">
+    <div className={`flex h-screen bg-[#f9fafb] dark:bg-slate-950 font-sans text-slate-800 dark:text-slate-100 overflow-hidden transition-colors duration-300 ${isDarkMode ? 'dark' : ''}`}>
       
       {/* Sidebar */}
-      <aside className="w-[280px] bg-white border-r border-slate-200 flex flex-col justify-between shrink-0 h-full">
+      <aside className="w-[280px] bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between shrink-0 h-full transition-colors duration-300">
         <div>
           <div className="h-20 flex items-center px-6">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100">
+              <div className="w-8 h-8 rounded bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800/50">
                 <Stethoscope className="w-5 h-5" />
               </div>
               <div>
-                <div className="text-slate-900 font-bold text-lg tracking-tight leading-tight">MediPilot AI</div>
-                <div className="text-slate-500 text-[11px] font-medium tracking-wide">AI Clinical Documentation</div>
+                <div className="text-slate-900 dark:text-white font-bold text-lg tracking-tight leading-tight">MediPilot AI</div>
+                <div className="text-slate-500 dark:text-slate-400 text-[11px] font-medium tracking-wide">AI Clinical Documentation</div>
               </div>
             </div>
           </div>
           
           <nav className="px-4 py-2 space-y-1">
-            <a href="#" className="flex items-center gap-3 px-4 py-3 bg-blue-50 text-blue-600 rounded-xl font-semibold transition-colors">
+            <a href="#" className="flex items-center gap-3 px-4 py-3 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl font-semibold transition-colors">
               <Mic className="w-5 h-5" />
               Consultation
             </a>
-            <a href="#" className="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-xl font-medium transition-colors">
-              <Users className="w-5 h-5 text-slate-400" />
+            <a href="#" className="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl font-medium transition-colors">
+              <Users className="w-5 h-5 text-slate-400 dark:text-slate-500" />
               Patients
             </a>
-            <a href="#" className="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-xl font-medium transition-colors">
-              <Calendar className="w-5 h-5 text-slate-400" />
+            <a href="#" className="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl font-medium transition-colors">
+              <Calendar className="w-5 h-5 text-slate-400 dark:text-slate-500" />
               Appointments
             </a>
-            <a href="#" className="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-xl font-medium transition-colors">
-              <FileText className="w-5 h-5 text-slate-400" />
+            <a href="#" className="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl font-medium transition-colors">
+              <FileText className="w-5 h-5 text-slate-400 dark:text-slate-500" />
               Medical Records
             </a>
-            <a href="#" className="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-xl font-medium transition-colors">
-              <LayoutTemplate className="w-5 h-5 text-slate-400" />
+            <a href="#" className="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl font-medium transition-colors">
+              <LayoutTemplate className="w-5 h-5 text-slate-400 dark:text-slate-500" />
               Templates
             </a>
-            <a href="#" className="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-xl font-medium transition-colors">
-              <LineChart className="w-5 h-5 text-slate-400" />
+            <a href="#" className="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl font-medium transition-colors">
+              <LineChart className="w-5 h-5 text-slate-400 dark:text-slate-500" />
               Analytics
             </a>
-            <a href="#" className="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-xl font-medium transition-colors mt-4">
-              <Settings className="w-5 h-5 text-slate-400" />
+            <a href="#" className="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl font-medium transition-colors mt-4">
+              <Settings className="w-5 h-5 text-slate-400 dark:text-slate-500" />
               Settings
             </a>
           </nav>
         </div>
         
         <div className="p-6">
-          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm mb-6 flex gap-4">
-            <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
-              <Lock className="w-4 h-4 text-emerald-600" />
+          <div className="bg-white dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm mb-6 flex gap-4 transition-colors">
+            <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center shrink-0">
+              <Lock className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
-              <div className="text-slate-800 font-bold text-sm mb-1">Secure System</div>
-              <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
+              <div className="text-slate-800 dark:text-slate-200 font-bold text-sm mb-1">Secure System</div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
                 Your conversations and patient data are encrypted and secure.
               </p>
             </div>
           </div>
           
-          <div className="text-[10px] text-slate-400 font-medium">
-            © 2025 MediPilot AI<br/>All rights reserved
+          <div className="flex items-center justify-between">
+            <div className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+              © 2025 MediPilot AI<br/>All rights reserved
+            </div>
+            
+            {/* Dark Mode Toggle */}
+            <button 
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className="p-2.5 rounded-full bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              title="Toggle Theme"
+            >
+              {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
           </div>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden bg-[#f9fafb]">
+      <main className="flex-1 flex flex-col h-screen overflow-hidden bg-[#f9fafb] dark:bg-slate-950 transition-colors">
         
         {/* Topbar */}
-        <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0">
+        <header className="h-20 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 shrink-0 transition-colors">
           <div>
-            <h1 className="text-lg font-bold text-slate-800">AI Consultation Session</h1>
-            <div className="flex items-center gap-1.5 text-emerald-600 text-xs font-semibold mt-0.5">
-              <div className={`w-1.5 h-1.5 rounded-full ${isRecording ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`}></div>
+            <h1 className="text-lg font-bold text-slate-800 dark:text-white">AI Consultation Session</h1>
+            <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 text-xs font-semibold mt-0.5">
+              <div className={`w-1.5 h-1.5 rounded-full ${isRecording ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
               {isRecording ? "Recording in progress" : "Session Idle"}
             </div>
           </div>
           
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-3">
-              <ShieldCheck className="w-8 h-8 text-blue-500 stroke-1" />
+              <ShieldCheck className="w-8 h-8 text-blue-500 dark:text-blue-400 stroke-1" />
               <div>
-                <div className="text-sm font-bold text-slate-800">HIPAA Compliant</div>
-                <div className="text-xs text-slate-500 font-medium">Secure & Encrypted</div>
+                <div className="text-sm font-bold text-slate-800 dark:text-slate-200">HIPAA Compliant</div>
+                <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">Secure & Encrypted</div>
               </div>
             </div>
             
-            <div className="w-px h-8 bg-slate-200"></div>
+            <div className="w-px h-8 bg-slate-200 dark:bg-slate-700"></div>
             
             <div className="flex items-center gap-3">
-              <Calendar className="w-6 h-6 text-slate-400 stroke-1" />
+              <Calendar className="w-6 h-6 text-slate-400 dark:text-slate-500 stroke-1" />
               <div>
-                <div className="text-sm font-bold text-slate-800">May 16, 2025</div>
-                <div className="text-xs text-slate-500 font-medium">10:24 AM</div>
+                <div className="text-sm font-bold text-slate-800 dark:text-slate-200">May 16, 2025</div>
+                <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">10:24 AM</div>
               </div>
             </div>
 
-            <div className="w-px h-8 bg-slate-200"></div>
+            <div className="w-px h-8 bg-slate-200 dark:bg-slate-700"></div>
             
             <div className="flex items-center gap-3 cursor-pointer">
-              <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 font-bold text-sm border border-blue-100">
+              <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/30 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm border border-blue-100 dark:border-blue-800/50">
                 DS
               </div>
               <div className="mr-2">
-                <div className="text-sm font-bold text-slate-800">Dr. Sarah Mitchell</div>
-                <div className="text-xs text-slate-500 font-medium">Cardiology</div>
+                <div className="text-sm font-bold text-slate-800 dark:text-slate-200">Dr. Sarah Mitchell</div>
+                <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">Cardiology</div>
               </div>
-              <ChevronDown className="w-4 h-4 text-slate-400" />
+              <ChevronDown className="w-4 h-4 text-slate-400 dark:text-slate-500" />
             </div>
           </div>
         </header>
@@ -298,20 +321,20 @@ export default function AI_Consultation_V2() {
         <div className="flex-1 overflow-y-auto p-8">
           
           {/* Patient Header Card */}
-          <div className="bg-white rounded-2xl p-5 border border-slate-200 mb-6 flex items-center justify-between shadow-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 mb-6 flex items-center justify-between shadow-sm transition-colors">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center text-lg font-bold border border-blue-100">
+              <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center text-lg font-bold border border-blue-100 dark:border-blue-800/50">
                 RS
               </div>
               <div>
-                <div className="text-lg font-bold text-slate-800 mb-0.5">Rahul Sharma</div>
-                <div className="text-xs text-slate-500 font-medium flex items-center gap-2">
+                <div className="text-lg font-bold text-slate-800 dark:text-white mb-0.5">Rahul Sharma</div>
+                <div className="text-xs text-slate-500 dark:text-slate-400 font-medium flex items-center gap-2">
                   <span>ID: PT-2026-8942</span>
-                  <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                  <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span>
                   <span>Male</span>
-                  <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                  <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span>
                   <span>28 Yrs</span>
-                  <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                  <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span>
                   <span>O+</span>
                 </div>
               </div>
@@ -319,10 +342,10 @@ export default function AI_Consultation_V2() {
             
             <div className="flex items-center gap-6">
               <div className="text-right">
-                <div className="text-xs text-slate-500 font-medium mb-0.5">Attending Physician</div>
-                <div className="text-sm font-bold text-slate-800">Dr. Sarah Mitchell (Cardiology)</div>
+                <div className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-0.5">Attending Physician</div>
+                <div className="text-sm font-bold text-slate-800 dark:text-slate-200">Dr. Sarah Mitchell (Cardiology)</div>
               </div>
-              <div className="bg-emerald-50 text-emerald-700 text-xs font-bold px-4 py-2 rounded-lg border border-emerald-100 flex items-center gap-2">
+              <div className="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold px-4 py-2 rounded-lg border border-emerald-100 dark:border-emerald-800/50 flex items-center gap-2">
                 Active Session
               </div>
             </div>
@@ -335,19 +358,19 @@ export default function AI_Consultation_V2() {
             <div className="flex flex-col gap-6 h-full">
               
               {/* Voice Capture */}
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col p-6">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col p-6 transition-colors">
                 <div className="flex items-center justify-between mb-8">
-                  <div className="text-blue-600 font-bold text-xs uppercase tracking-widest">Voice Capture</div>
-                  <div className="flex items-center gap-1.5 text-slate-500 text-xs font-medium">
+                  <div className="text-blue-600 dark:text-blue-400 font-bold text-xs uppercase tracking-widest">Voice Capture</div>
+                  <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-xs font-medium">
                     <Lock className="w-3.5 h-3.5" /> Secure Transcription
                   </div>
                 </div>
 
                 <div className="flex flex-col items-center">
-                  <div className="text-5xl font-light text-slate-800 tracking-tight tabular-nums">
+                  <div className="text-5xl font-light text-slate-800 dark:text-white tracking-tight tabular-nums">
                     {formatTime(timer)}
                   </div>
-                  <div className="text-slate-400 text-xs font-medium mt-1 uppercase tracking-widest">Duration</div>
+                  <div className="text-slate-400 dark:text-slate-500 text-xs font-medium mt-1 uppercase tracking-widest">Duration</div>
                 </div>
 
                 {/* Waveform */}
@@ -355,7 +378,7 @@ export default function AI_Consultation_V2() {
                   {[...Array(24)].map((_, i) => (
                     <motion.div
                       key={i}
-                      className="w-1.5 bg-blue-500 rounded-full opacity-80"
+                      className="w-1.5 bg-blue-500 dark:bg-blue-400 rounded-full opacity-80"
                       animate={
                         isRecording && !isPaused
                           ? { height: [12, Math.random() * 40 + 10, 12] }
@@ -377,22 +400,22 @@ export default function AI_Consultation_V2() {
                       onClick={startRecording}
                       className="flex flex-col items-center gap-3 group"
                     >
-                      <div className="w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg shadow-blue-200 group-hover:bg-blue-700 transition-all">
+                      <div className="w-16 h-16 bg-blue-600 dark:bg-blue-500 text-white rounded-full flex items-center justify-center shadow-lg shadow-blue-200 dark:shadow-none group-hover:bg-blue-700 dark:group-hover:bg-blue-400 transition-all">
                         <Mic className="w-7 h-7" />
                       </div>
-                      <span className="text-sm font-semibold text-slate-600">Start Recording</span>
+                      <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">Start Recording</span>
                     </button>
                   ) : (
                     <>
                       <div className="flex flex-col items-center gap-3">
-                        <div className="w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg shadow-blue-200">
+                        <div className="w-16 h-16 bg-blue-600 dark:bg-blue-500 text-white rounded-full flex items-center justify-center shadow-lg shadow-blue-200 dark:shadow-none">
                           <Mic className="w-7 h-7" />
                         </div>
-                        <span className="text-sm font-semibold text-blue-600">{status}</span>
+                        <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">{status}</span>
                       </div>
                       <button
                         onClick={stopRecording}
-                        className="px-5 py-2.5 bg-red-50 text-red-600 border border-red-100 rounded-lg flex items-center gap-2 hover:bg-red-100 transition-all font-bold text-sm"
+                        className="px-5 py-2.5 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-800/50 rounded-lg flex items-center gap-2 hover:bg-red-100 dark:hover:bg-red-900/50 transition-all font-bold text-sm"
                       >
                         <Square className="w-4 h-4 fill-current" /> Stop Recording
                       </button>
@@ -400,8 +423,8 @@ export default function AI_Consultation_V2() {
                   )}
                 </div>
 
-                <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-medium text-slate-500">
-                  <div className="flex items-center gap-2 cursor-pointer hover:text-slate-700">
+                <div className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-medium text-slate-500 dark:text-slate-400">
+                  <div className="flex items-center gap-2 cursor-pointer hover:text-slate-700 dark:hover:text-slate-300">
                     <Mic className="w-4 h-4" /> Microphone: Built-in Microphone (Realtek) <ChevronDown className="w-3 h-3" />
                   </div>
                   <div className="flex items-center gap-2">
@@ -410,7 +433,7 @@ export default function AI_Consultation_V2() {
                       <div className="w-1 h-3 bg-emerald-500 rounded-full"></div>
                       <div className="w-1 h-3 bg-emerald-500 rounded-full"></div>
                       <div className="w-1 h-3 bg-emerald-500 rounded-full"></div>
-                      <div className="w-1 h-3 bg-slate-200 rounded-full"></div>
+                      <div className="w-1 h-3 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
                     </div>
                     Good
                   </div>
@@ -418,34 +441,34 @@ export default function AI_Consultation_V2() {
               </div>
 
               {/* Live Transcript */}
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col flex-1 overflow-hidden">
-                <div className="p-5 flex items-center justify-between border-b border-slate-100">
-                  <div className="text-blue-600 font-bold text-xs uppercase tracking-widest">Live Transcript</div>
-                  <div className="flex items-center gap-1.5 text-emerald-600 text-xs font-bold">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col flex-1 overflow-hidden transition-colors">
+                <div className="p-5 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
+                  <div className="text-blue-600 dark:text-blue-400 font-bold text-xs uppercase tracking-widest">Live Transcript</div>
+                  <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 text-xs font-bold">
                     <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div> Live
                   </div>
                 </div>
                 
-                <div className="p-5 flex-1 overflow-y-auto space-y-6 bg-slate-50/50">
+                <div className="p-5 flex-1 overflow-y-auto space-y-6 bg-slate-50/50 dark:bg-slate-950/50">
                   {transcript ? (
                     <div className="space-y-4">
                       <div className="flex gap-4">
-                        <div className="w-8 h-8 rounded-full border border-blue-200 bg-blue-50 flex items-center justify-center shrink-0">
-                          <User className="w-4 h-4 text-blue-600" />
+                        <div className="w-8 h-8 rounded-full border border-blue-200 dark:border-blue-800/50 bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                          <User className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                         </div>
                         <div>
                           <div className="flex items-center gap-3 mb-1">
-                            <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Doctor</span>
-                            <span className="text-[10px] font-medium text-slate-400">10:23:12 AM</span>
+                            <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Doctor</span>
+                            <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500">10:23:12 AM</span>
                           </div>
-                          <p className="text-sm text-slate-700 leading-relaxed bg-white p-3 rounded-xl rounded-tl-none border border-slate-200 shadow-sm">
+                          <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed bg-white dark:bg-slate-800 p-3 rounded-xl rounded-tl-none border border-slate-200 dark:border-slate-700 shadow-sm">
                             {transcript}
                           </p>
                         </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="h-full flex items-center justify-center text-slate-400 italic text-sm">
+                    <div className="h-full flex items-center justify-center text-slate-400 dark:text-slate-500 italic text-sm">
                       {status.includes("Processing") ? (
                         <span className="flex items-center gap-2 animate-pulse"><Activity className="w-4 h-4" /> Transcribing audio...</span>
                       ) : (
@@ -455,19 +478,19 @@ export default function AI_Consultation_V2() {
                   )}
                 </div>
 
-                <div className="p-4 border-t border-slate-100 bg-white flex items-center justify-between">
+                <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <button onClick={isPaused ? resumeRecording : pauseRecording} disabled={!isRecording} className="px-4 py-2 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2 disabled:opacity-50">
+                    <button onClick={isPaused ? resumeRecording : pauseRecording} disabled={!isRecording} className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2 disabled:opacity-50">
                       {isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4 fill-current" />} {isPaused ? "Resume" : "Pause"}
                     </button>
-                    <button onClick={stopRecording} disabled={!isRecording} className="px-4 py-2 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2 disabled:opacity-50">
+                    <button onClick={stopRecording} disabled={!isRecording} className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2 disabled:opacity-50">
                       <Square className="w-4 h-4 fill-red-500 text-red-500" /> Stop
                     </button>
-                    <button onClick={clearRecording} disabled={!transcript && !timer} className="px-4 py-2 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2 disabled:opacity-50 ml-2">
+                    <button onClick={clearRecording} disabled={!transcript && !timer} className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2 disabled:opacity-50 ml-2">
                       <Trash2 className="w-4 h-4" /> Clear
                     </button>
                   </div>
-                  <div className="text-xs font-bold text-slate-500 flex items-center gap-2">
+                  <div className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
                     {timer} sec captured
                   </div>
@@ -477,20 +500,20 @@ export default function AI_Consultation_V2() {
             </div>
 
             {/* Right Column: AI Summary */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-full overflow-hidden">
-              <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-emerald-50/30">
-                <div className="text-emerald-700 font-bold text-sm uppercase tracking-widest">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col h-full overflow-hidden transition-colors">
+              <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-emerald-50/30 dark:bg-emerald-900/10">
+                <div className="text-emerald-700 dark:text-emerald-400 font-bold text-sm uppercase tracking-widest">
                   AI Clinical Summary
                 </div>
-                <div className="bg-emerald-100 text-emerald-800 font-bold text-[10px] px-2.5 py-1 rounded tracking-widest uppercase">
+                <div className="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 font-bold text-[10px] px-2.5 py-1 rounded tracking-widest uppercase">
                   Draft
                 </div>
               </div>
 
               {!summary ? (
-                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-50/50">
-                   <ClipboardList className="w-12 h-12 text-slate-300 mb-4" />
-                   <p className="text-slate-500 font-medium max-w-sm leading-relaxed">
+                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-50/50 dark:bg-slate-950/50">
+                   <ClipboardList className="w-12 h-12 text-slate-300 dark:text-slate-600 mb-4" />
+                   <p className="text-slate-500 dark:text-slate-400 font-medium max-w-sm leading-relaxed">
                      The AI Clinical Summary, recommended tests, and notes will automatically generate here after the consultation ends.
                    </p>
                 </div>
@@ -498,9 +521,9 @@ export default function AI_Consultation_V2() {
                 <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
                   
                   {/* Warning */}
-                  <div className="bg-amber-50 border border-amber-100 p-4 rounded-xl flex gap-3">
+                  <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/30 p-4 rounded-xl flex gap-3">
                     <div className="text-amber-500 mt-0.5">⚠️</div>
-                    <p className="text-amber-800 text-sm font-medium">
+                    <p className="text-amber-800 dark:text-amber-300 text-sm font-medium">
                       AI Generated Draft. Doctor approval required.<br/>
                       <span className="font-normal">This is NOT a diagnosis.</span>
                     </p>
@@ -511,48 +534,42 @@ export default function AI_Consultation_V2() {
                     <textarea 
                       value={summary}
                       onChange={(e) => setSummary(e.target.value)}
-                      className="w-full h-96 p-4 border border-blue-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm text-slate-700 font-mono shadow-inner"
+                      className="w-full h-96 p-4 border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-950 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm text-slate-700 dark:text-slate-200 font-mono shadow-inner"
                       placeholder="Edit the AI generated summary here..."
                     />
                   ) : (
-                    <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm whitespace-pre-wrap text-sm text-slate-700 leading-relaxed h-96 overflow-y-auto">
+                    <div className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-200 leading-relaxed h-96 overflow-y-auto">
                       {summary}
                     </div>
                   )}
                   {/* Bottom Panels (Tests & Notes) */}
                   <div className="grid grid-cols-2 gap-4 mt-4">
                     {/* Tests */}
-                    <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-                      <h3 className="font-bold text-blue-600 text-sm mb-4">Recommended Tests</h3>
+                    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 shadow-sm">
+                      <h3 className="font-bold text-blue-600 dark:text-blue-400 text-sm mb-4">Recommended Tests</h3>
                       <div className="space-y-3">
-                        <label className="flex items-start gap-3 text-sm text-slate-700 cursor-pointer group">
-                          <input type="checkbox" className="mt-1 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-                          <span className="group-hover:text-blue-600 transition-colors">Complete Blood Count (CBC)</span>
-                        </label>
-                        <label className="flex items-start gap-3 text-sm text-slate-700 cursor-pointer group">
-                          <input type="checkbox" className="mt-1 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-                          <span className="group-hover:text-blue-600 transition-colors">Rapid Antigen Test or PCR for COVID-19</span>
-                        </label>
-                        <label className="flex items-start gap-3 text-sm text-slate-700 cursor-pointer group">
-                          <input type="checkbox" className="mt-1 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-                          <span className="group-hover:text-blue-600 transition-colors">Throat Swab for Streptococcal Infection</span>
-                        </label>
-                        <label className="flex items-start gap-3 text-sm text-slate-700 cursor-pointer group">
-                          <input type="checkbox" className="mt-1 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-                          <span className="group-hover:text-blue-600 transition-colors">Chest X-ray (if symptoms worsen)</span>
-                        </label>
+                        {recommendedTests.length > 0 ? recommendedTests.map((test, index) => (
+                          <label key={index} className="flex items-start gap-3 text-sm text-slate-700 dark:text-slate-300 cursor-pointer group">
+                            <input type="checkbox" className="mt-1 rounded border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-blue-600 focus:ring-blue-500" />
+                            <span className="group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{test}</span>
+                          </label>
+                        )) : (
+                          <div className="text-sm text-slate-400 italic">No tests recommended.</div>
+                        )}
                       </div>
                     </div>
 
                     {/* Notes */}
-                    <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-                      <h3 className="font-bold text-emerald-600 text-sm mb-4 flex items-center gap-2">
+                    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 shadow-sm">
+                      <h3 className="font-bold text-emerald-600 dark:text-emerald-400 text-sm mb-4 flex items-center gap-2">
                         <CheckCircle2 className="w-4 h-4" /> Important Notes
                       </h3>
-                      <ul className="list-disc list-inside text-sm text-slate-600 space-y-2.5 leading-relaxed">
-                        <li>The patient denies chest pain or difficulty breathing at this time.</li>
-                        <li>The patient's temperature has been around 101°F.</li>
-                        <li>Further evaluation and history are needed to determine the cause of the symptoms and appropriate management.</li>
+                      <ul className="list-disc list-inside text-sm text-slate-600 dark:text-slate-300 space-y-2.5 leading-relaxed">
+                        {importantNotes.length > 0 ? importantNotes.map((note, index) => (
+                          <li key={index}>{note}</li>
+                        )) : (
+                          <li className="text-slate-400 italic list-none">No important notes.</li>
+                        )}
                       </ul>
                     </div>
                   </div>
@@ -560,30 +577,30 @@ export default function AI_Consultation_V2() {
               )}
 
               {/* Action Buttons */}
-              <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex items-center gap-4">
+              <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center gap-4">
                 {ehrStatus && (
-                  <div className="mr-auto text-emerald-600 text-sm font-bold flex items-center gap-2">
+                  <div className="mr-auto text-emerald-600 dark:text-emerald-400 text-sm font-bold flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4" /> {ehrStatus}
                   </div>
                 )}
                 <button 
                   onClick={downloadPDF}
                   disabled={!summary || status === "Generating PDF..." || isEditingSummary}
-                  className={`${ehrStatus ? '' : 'ml-auto'} px-6 py-3 bg-blue-600 text-white font-bold text-sm rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm shadow-blue-200`}
+                  className={`${ehrStatus ? '' : 'ml-auto'} px-6 py-3 bg-blue-600 text-white font-bold text-sm rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm shadow-blue-200 dark:shadow-none`}
                 >
                   <Download className="w-4 h-4" /> Download PDF
                 </button>
                 <button 
                   onClick={() => setIsEditingSummary(!isEditingSummary)}
                   disabled={!summary}
-                  className={`px-6 py-3 border font-bold text-sm rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm ${isEditingSummary ? 'bg-blue-50 border-blue-300 text-blue-700' : 'bg-white border-slate-200 text-blue-600 hover:bg-blue-50'}`}
+                  className={`px-6 py-3 border font-bold text-sm rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm ${isEditingSummary ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-300' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-700'}`}
                 >
                   <Edit3 className="w-4 h-4" /> {isEditingSummary ? "Save Summary" : "Edit Summary"}
                 </button>
                 <button 
                   onClick={handleSendEHR}
                   disabled={!summary || isEditingSummary || ehrStatus !== ""}
-                  className="px-6 py-3 bg-white border border-slate-200 text-blue-600 font-bold text-sm rounded-xl hover:bg-blue-50 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm"
+                  className="px-6 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 font-bold text-sm rounded-xl hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm"
                 >
                   <Send className="w-4 h-4" /> Send to EHR
                 </button>
