@@ -8,6 +8,7 @@ from app.database import Base
 
 class Prescription(Base):
     __tablename__ = "prescriptions"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     patient_id = Column(UUID(as_uuid=True), ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -23,6 +24,7 @@ class Prescription(Base):
 
 class RecoveryMetric(Base):
     __tablename__ = "recovery_metrics"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     patient_id = Column(UUID(as_uuid=True), ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, unique=True)
@@ -40,6 +42,7 @@ class RecoveryMetric(Base):
 
 class Discharge(Base):
     __tablename__ = "discharges"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     patient_id = Column(UUID(as_uuid=True), ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -56,6 +59,7 @@ class Discharge(Base):
 
 class Invoice(Base):
     __tablename__ = "invoices"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     patient_id = Column(UUID(as_uuid=True), ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -73,6 +77,7 @@ class Invoice(Base):
 
 class MedicineCatalog(Base):
     __tablename__ = "medicine_catalog"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(200), nullable=False)
