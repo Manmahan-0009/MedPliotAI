@@ -9,8 +9,17 @@ import {
   Moon, Sun
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useSearchParams, useRouter } from "next/navigation";
+import { Suspense } from "react";
 
-export default function AI_Consultation_V2() {
+function ConsultationContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  
+  const patientId = searchParams.get("patient") || "PT-2026-8942";
+  const patientName = searchParams.get("name") || "Rahul Sharma";
+  const patientInitials = patientName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+
   const [status, setStatus] = useState("Idle"); 
   const [transcript, setTranscript] = useState("");
   const [summary, setSummary] = useState("");
@@ -166,7 +175,7 @@ export default function AI_Consultation_V2() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           doctor_name: "Dr. Sarah Mitchell",
-          patient_name: "Rahul Sharma",
+          patient_name: patientName,
           date: new Date().toLocaleDateString(),
           transcript: transcript,
           summary: summary
@@ -213,7 +222,7 @@ export default function AI_Consultation_V2() {
               <Mic className="w-5 h-5" />
               Consultation
             </a>
-            <a href="#" className="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl font-medium transition-colors">
+            <a onClick={() => router.push("/patients")} className="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl font-medium transition-colors cursor-pointer">
               <Users className="w-5 h-5 text-slate-400 dark:text-slate-500" />
               Patients
             </a>
@@ -324,12 +333,12 @@ export default function AI_Consultation_V2() {
           <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 mb-6 flex items-center justify-between shadow-sm transition-colors">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center text-lg font-bold border border-blue-100 dark:border-blue-800/50">
-                RS
+                {patientInitials}
               </div>
               <div>
-                <div className="text-lg font-bold text-slate-800 dark:text-white mb-0.5">Rahul Sharma</div>
+                <div className="text-lg font-bold text-slate-800 dark:text-white mb-0.5">{patientName}</div>
                 <div className="text-xs text-slate-500 dark:text-slate-400 font-medium flex items-center gap-2">
-                  <span>ID: PT-2026-8942</span>
+                  <span>ID: {patientId}</span>
                   <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span>
                   <span>Male</span>
                   <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span>
@@ -611,5 +620,13 @@ export default function AI_Consultation_V2() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function AI_Consultation_V2() {
+  return (
+    <Suspense fallback={<div className="h-screen flex items-center justify-center bg-[#f9fafb]">Loading Consultation...</div>}>
+      <ConsultationContent />
+    </Suspense>
   );
 }

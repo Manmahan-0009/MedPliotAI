@@ -18,5 +18,8 @@ frontend/.next/
 frontend/out/
 frontend/build/
 
-# Mac
-.DS_Store
+# Secrets and local notes
+NOTES_LOCAL.md
+backend/firebase-service-account.json
+*.json.secret
+
