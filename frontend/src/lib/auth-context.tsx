@@ -285,11 +285,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const login = async (email: string, pass: string): Promise<UserProfile | null> => {
     setLoading(true);
+    let cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail.includes("@")) {
+      cleanEmail = `${cleanEmail}@medipilot.ai`;
+    }
     let fbProfile: UserProfile | null = null;
     let fbError: unknown = null;
 
     try {
-      const cred = await signInWithEmailAndPassword(auth, email, pass);
+      const cred = await signInWithEmailAndPassword(auth, cleanEmail, pass);
       firebaseUserRef.current = cred.user;
       setFirebaseUser(cred.user);
       const token = await cred.user.getIdToken();
@@ -307,7 +311,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password: pass }),
+        body: JSON.stringify({ email: cleanEmail, password: pass }),
       });
 
       if (res.ok) {
@@ -358,23 +362,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     phone?: string;
   }) => {
     setLoading(true);
+    const cleanEmail = data.email.trim().toLowerCase();
     let uid = "db_doctor_" + Math.random().toString(36).substring(2, 10);
     let isRealFirebase = false;
 
     try {
-      const cred = await createUserWithEmailAndPassword(auth, data.email, data.pass);
+      const cred = await createUserWithEmailAndPassword(auth, cleanEmail, data.pass);
       uid = cred.user.uid;
       firebaseUserRef.current = cred.user;
       setFirebaseUser(cred.user);
       isRealFirebase = true;
     } catch (fbErr: unknown) {
-      const code = (fbErr as { code?: string })?.code;
-      const configErr =
-        code === "auth/configuration-not-found" || code === "auth/operation-not-allowed";
-      if (!configErr) {
-        setLoading(false);
-        throw fbErr;
-      }
+      console.warn("Firebase signup notice, falling back to backend registration:", fbErr);
     }
 
     try {
@@ -383,7 +382,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           firebase_uid: uid,
-          email: data.email,
+          email: cleanEmail,
           password: data.pass,
           full_name: data.full_name,
           department: data.department || null,
@@ -427,23 +426,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     address?: string;
   }) => {
     setLoading(true);
+    const cleanEmail = data.email.trim().toLowerCase();
     let uid = "db_patient_" + Math.random().toString(36).substring(2, 10);
     let isRealFirebase = false;
 
     try {
-      const cred = await createUserWithEmailAndPassword(auth, data.email, data.pass);
+      const cred = await createUserWithEmailAndPassword(auth, cleanEmail, data.pass);
       uid = cred.user.uid;
       firebaseUserRef.current = cred.user;
       setFirebaseUser(cred.user);
       isRealFirebase = true;
     } catch (fbErr: unknown) {
-      const code = (fbErr as { code?: string })?.code;
-      const configErr =
-        code === "auth/configuration-not-found" || code === "auth/operation-not-allowed";
-      if (!configErr) {
-        setLoading(false);
-        throw fbErr;
-      }
+      console.warn("Firebase signup notice, falling back to backend registration:", fbErr);
     }
 
     try {
@@ -452,7 +446,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           firebase_uid: uid,
-          email: data.email,
+          email: cleanEmail,
           password: data.pass,
           first_name: data.first_name,
           last_name: data.last_name,

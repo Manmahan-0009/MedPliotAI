@@ -1,282 +1,304 @@
+"use client";
+
+import React, { useEffect } from "react";
 import Link from "next/link";
-import { PublicNavbar } from "@/components/layout/PublicNavbar";
-import { PublicFooter } from "@/components/layout/PublicFooter";
-import { 
-  Stethoscope, FileText, Pill, ShoppingBag, TrendingUp, CalendarCheck, 
-  ArrowRight, ShieldCheck, HeartPulse, Activity
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
+import {
+  Stethoscope,
+  User,
+  ShieldCheck,
+  Activity,
+  Pill,
+  ShoppingBag,
+  FileText,
+  HeartPulse,
+  ArrowRight,
+  Sparkles,
+  Lock,
+  CheckCircle2,
 } from "lucide-react";
 
 export default function LandingPage() {
+  const { userProfile, role, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && userProfile) {
+      if (role === "doctor") {
+        router.replace("/doctor/dashboard");
+      } else if (role === "patient") {
+        router.replace("/patient/dashboard");
+      }
+    }
+  }, [loading, userProfile, role, router]);
+
+  // While checking authentication state, render minimal clean loader
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-200 font-sans">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-slate-400 font-medium">Verifying session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If user is authenticated, do not render landing page content while redirecting
+  if (userProfile) {
+    return null;
+  }
+
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-blue-100 selection:text-blue-900">
-      <PublicNavbar />
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-emerald-500 selection:text-white flex flex-col justify-between">
+      
+      {/* HEADER / NAVIGATION */}
+      <header className="sticky top-0 z-50 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80 px-6 py-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-emerald-500 flex items-center justify-center text-white font-bold shadow-md shadow-emerald-500/20">
+              <Stethoscope className="w-5 h-5" />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-lg text-white tracking-tight">MediPilot AI</span>
+              <span className="text-[10px] uppercase font-semibold text-emerald-400 bg-emerald-950/80 border border-emerald-800/60 px-2 py-0.5 rounded-md tracking-wider">
+                Enterprise
+              </span>
+            </div>
+          </div>
 
-      <main>
-        {/* 1. HERO SECTION */}
-        <section className="relative pt-24 pb-32 overflow-hidden bg-white">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-50 via-white to-white opacity-70"></div>
-          
-          <div className="container mx-auto px-4 md:px-8 relative z-10">
-            <div className="flex flex-col lg:flex-row items-center gap-16">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/doctor/login"
+              className="px-4 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white transition-colors flex items-center gap-1.5 shadow-sm"
+            >
+              <Stethoscope className="w-3.5 h-3.5" /> Doctor Portal
+            </Link>
+            <Link
+              href="/patient/login"
+              className="px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors flex items-center gap-1.5 shadow-sm"
+            >
+              <User className="w-3.5 h-3.5" /> Patient Portal
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      {/* HERO SECTION */}
+      <main className="flex-1">
+        <section className="relative pt-16 pb-20 overflow-hidden">
+          <div className="max-w-5xl mx-auto px-6 text-center space-y-8 relative z-10">
+            
+            {/* AI Badge */}
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-emerald-400 text-xs font-medium shadow-sm">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+              <span>AI-Powered Clinical & Patient Health Engine</span>
+            </div>
+
+            {/* Main Title */}
+            <h1 className="text-4xl sm:text-6xl font-extrabold text-white tracking-tight leading-[1.15] max-w-3xl mx-auto">
+              Intelligent Clinical Care. <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-emerald-400 to-teal-300">
+                Seamless Patient Outcomes.
+              </span>
+            </h1>
+
+            {/* Description */}
+            <p className="text-slate-400 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
+              MediPilot AI streamlines clinical documentation with real-time speech transcription, automated SOAP notes, medication interaction auditing, smart generic savings, and daily recovery tracking.
+            </p>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+              <Link
+                href="/doctor/login"
+                className="w-full sm:w-auto px-7 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20"
+              >
+                <span>Doctor Portal</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+              <Link
+                href="/patient/login"
+                className="w-full sm:w-auto px-7 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20"
+              >
+                <span>Patient Portal</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+
+          </div>
+        </section>
+
+        {/* FEATURE HIGHLIGHTS */}
+        <section className="py-16 border-t border-slate-800/80 bg-slate-950">
+          <div className="max-w-6xl mx-auto px-6 space-y-10">
+            
+            <div className="text-center space-y-2">
+              <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Core Platform Features</h2>
+              <p className="text-xs text-slate-400 max-w-md mx-auto">
+                Purpose-built intelligence designed for clinicians and patients.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               
-              <div className="flex-1 text-center lg:text-left">
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 text-blue-700 font-bold text-sm mb-6 border border-blue-100">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-                  </span>
-                  AI-Powered Healthcare Platform
+              {/* Feature 1 */}
+              <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-950 border border-blue-800/80 text-blue-400 flex items-center justify-center font-bold">
+                  <Stethoscope className="w-5 h-5" />
                 </div>
-                
-                <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-slate-900 leading-[1.1] mb-6">
-                  Intelligent Healthcare. <br/>
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-400">Connected Care.</span>
-                </h1>
-                
-                <p className="text-lg md:text-xl text-slate-600 mb-10 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
-                  MediPilot AI brings AI-powered consultation, clinical documentation, medication management, recovery tracking, and patient care into one connected healthcare platform.
+                <h3 className="font-bold text-white text-base">Real-time Transcription & SOAP Notes</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Converts doctor-patient consultations into structured SOAP notes and clinical summaries automatically.
                 </p>
-                
-                <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
-                  <Link href="/signup" className="w-full sm:w-auto bg-blue-600 text-white font-bold px-8 py-4 rounded-xl hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-200 transition-all flex items-center justify-center gap-2">
-                    Get Started <ArrowRight className="w-5 h-5" />
-                  </Link>
-                  <Link href="/signin" className="w-full sm:w-auto bg-white text-slate-700 font-bold px-8 py-4 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors flex items-center justify-center">
-                    Sign In
-                  </Link>
-                </div>
               </div>
 
-              {/* Hero Visual */}
-              <div className="flex-1 w-full max-w-lg lg:max-w-none relative">
-                <div className="absolute inset-0 bg-gradient-to-tr from-blue-100 to-emerald-50 rounded-[3rem] transform rotate-3 scale-105 blur-2xl opacity-50"></div>
-                <div className="relative bg-white border border-slate-200 shadow-2xl rounded-3xl p-8 flex flex-col gap-6">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                     <div className="flex items-center gap-3">
-                       <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center">
-                         <Stethoscope className="text-blue-600 w-6 h-6" />
-                       </div>
-                       <div>
-                         <div className="font-bold text-slate-900">Dr. Sarah Mitchell</div>
-                         <div className="text-sm text-slate-500">Cardiology Specialist</div>
-                       </div>
-                     </div>
-                     <div className="bg-emerald-50 text-emerald-700 text-xs font-bold px-3 py-1 rounded-full border border-emerald-100">
-                       Active Session
-                     </div>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    <div className="flex items-start gap-4 bg-slate-50 p-4 rounded-2xl">
-                      <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0 mt-1">
-                        <Activity className="w-4 h-4 text-blue-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-slate-800 mb-1">AI Transcript</p>
-                        <p className="text-sm text-slate-600 leading-relaxed">
-                          "Patient reports mild chest discomfort and fatigue over the past 3 days..."
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-4 bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100/50">
-                      <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 mt-1">
-                        <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-slate-800 mb-1">AI Summary Generated</p>
-                        <p className="text-sm text-slate-600 leading-relaxed">
-                          Chief complaint noted. Recommended ECG and continued observation.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+              {/* Feature 2 */}
+              <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-purple-950 border border-purple-800/80 text-purple-400 flex items-center justify-center font-bold">
+                  <Pill className="w-5 h-5" />
                 </div>
+                <h3 className="font-bold text-white text-base">Medication Interaction Safety</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Audits prescribed drug-drug interactions and dosage limits in real time to protect patient safety.
+                </p>
+              </div>
+
+              {/* Feature 3 */}
+              <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-950 border border-emerald-800/80 text-emerald-400 flex items-center justify-center font-bold">
+                  <ShoppingBag className="w-5 h-5" />
+                </div>
+                <h3 className="font-bold text-white text-base">Smart Pharmacy & Generic Savings</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Provides FDA-approved generic alternatives to help patients lower prescription costs.
+                </p>
+              </div>
+
+              {/* Feature 4 */}
+              <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-teal-950 border border-teal-800/80 text-teal-400 flex items-center justify-center font-bold">
+                  <HeartPulse className="w-5 h-5" />
+                </div>
+                <h3 className="font-bold text-white text-base">AI Recovery Analytics</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Calculates daily recovery indices, symptom stabilization trends, and adherence scores.
+                </p>
+              </div>
+
+              {/* Feature 5 */}
+              <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-950 border border-amber-800/80 text-amber-400 flex items-center justify-center font-bold">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <h3 className="font-bold text-white text-base">Automated Discharge Summaries</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Generates ready-to-print discharge summaries, instruction checklists, and invoice records.
+                </p>
+              </div>
+
+              {/* Feature 6 */}
+              <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-950 border border-indigo-800/80 text-indigo-400 flex items-center justify-center font-bold">
+                  <Lock className="w-5 h-5" />
+                </div>
+                <h3 className="font-bold text-white text-base">HIPAA Compliant & Secure</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Encrypted end-to-end with secure role-based access control and persistent session storage.
+                </p>
               </div>
 
             </div>
+
           </div>
         </section>
 
-        {/* 2. FEATURES SECTION */}
-        <section id="features" className="py-24 bg-slate-50">
-          <div className="container mx-auto px-4 md:px-8">
-            <div className="text-center max-w-3xl mx-auto mb-16">
-              <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
-                Everything You Need for Connected Healthcare
-              </h2>
-              <p className="text-slate-600 text-lg">
-                Our suite of tools empowers doctors and guides patients through every step of the clinical journey.
-              </p>
+        {/* PORTAL SELECTION */}
+        <section className="py-16 border-t border-slate-800/80 bg-slate-950">
+          <div className="max-w-4xl mx-auto px-6 space-y-8">
+            
+            <div className="text-center space-y-2">
+              <h2 className="text-2xl font-bold text-white tracking-tight">Access Your Portal</h2>
+              <p className="text-xs text-slate-400">Select the workspace customized for your role.</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {[
-                { icon: <Stethoscope />, title: "AI Speech-to-Text", desc: "Capture doctor-patient conversations and convert them into structured text instantly." },
-                { icon: <FileText />, title: "AI Clinical Documentation", desc: "Generate AI-assisted consultation summaries and SOAP notes automatically." },
-                { icon: <HeartPulse />, title: "Smart Medication Management", desc: "Manage prescriptions, medication schedules, and adherence in real-time." },
-                { icon: <ShoppingBag />, title: "Smart Pharmacy", desc: "Help patients access and purchase doctor-prescribed medicines conveniently." },
-                { icon: <TrendingUp />, title: "AI Recovery Tracking", desc: "Track patient recovery progress, symptoms, and medication adherence daily." },
-                { icon: <CalendarCheck />, title: "Smart Discharge", desc: "Simplify discharge documents, billing workflows, and follow-up scheduling." }
-              ].map((feature, idx) => (
-                <div key={idx} className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-200 transition-all group">
-                  <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-blue-600 group-hover:text-white transition-all">
-                    {feature.icon}
-                  </div>
-                  <h3 className="text-xl font-bold text-slate-900 mb-3">{feature.title}</h3>
-                  <p className="text-slate-600 leading-relaxed">{feature.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* 3. HOW IT WORKS */}
-        <section id="how-it-works" className="py-24 bg-white">
-          <div className="container mx-auto px-4 md:px-8">
-            <div className="text-center max-w-3xl mx-auto mb-20">
-              <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
-                From Consultation to Recovery
-              </h2>
-              <p className="text-slate-600 text-lg">
-                A seamless, connected workflow that eliminates friction between clinical visits and home care.
-              </p>
-            </div>
-
-            <div className="max-w-5xl mx-auto">
-              <div className="relative">
-                <div className="hidden md:block absolute left-[50%] top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-100 via-blue-200 to-blue-100"></div>
-                
-                {[
-                  { title: "Doctor Consultation", desc: "Patient meets with the doctor." },
-                  { title: "AI Speech-to-Text & Documentation", desc: "Conversations are securely transcribed and summarized into SOAP notes." },
-                  { title: "Prescription & Medication Management", desc: "Digital prescriptions are sent to the patient's secure dashboard." },
-                  { title: "Recovery Tracking", desc: "Patients report daily progress and adherence via the app." },
-                  { title: "Follow-up & Smart Discharge", desc: "Streamlined billing, documents, and continuous care planning." }
-                ].map((step, idx) => (
-                  <div key={idx} className={`flex flex-col md:flex-row items-center justify-between mb-12 relative ${idx % 2 === 0 ? 'md:flex-row-reverse' : ''}`}>
-                    <div className="hidden md:flex absolute left-[50%] -translate-x-1/2 w-8 h-8 rounded-full bg-white border-4 border-blue-500 items-center justify-center z-10"></div>
-                    <div className={`w-full md:w-[45%] bg-slate-50 border border-slate-200 p-6 rounded-2xl ${idx % 2 === 0 ? 'md:text-left' : 'md:text-right text-left'}`}>
-                      <div className="text-blue-600 font-bold text-sm mb-2 uppercase tracking-wider">Step 0{idx + 1}</div>
-                      <h4 className="text-lg font-bold text-slate-900 mb-2">{step.title}</h4>
-                      <p className="text-slate-600">{step.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* 4. DOCTOR + PATIENT SECTION */}
-        <section className="py-24 bg-slate-900 text-white relative overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,_var(--tw-gradient-stops))] from-blue-900/40 via-transparent to-transparent"></div>
-          <div className="container mx-auto px-4 md:px-8 relative z-10">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
-              {/* Doctor Card */}
-              <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-10 rounded-[2.5rem] hover:border-blue-500/50 transition-colors">
-                <h3 className="text-3xl font-bold mb-4">For Doctors</h3>
-                <p className="text-slate-400 mb-8 text-lg">Powerful tools for modern clinical workflows.</p>
-                
-                <ul className="space-y-4 mb-10">
-                  {["AI Speech-to-Text", "AI Summary", "SOAP Notes", "Patient Management", "Prescriptions", "Medication Management", "Smart Discharge"].map((item, i) => (
-                    <li key={i} className="flex items-center gap-3 text-slate-300">
-                      <div className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
-                        <Check className="w-3 h-3" />
-                      </div>
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-                
-                <Link href="/signin" className="inline-flex items-center gap-2 bg-blue-600 text-white font-bold px-6 py-3 rounded-xl hover:bg-blue-500 transition-colors">
-                  Sign In as Doctor <ArrowRight className="w-4 h-4" />
+              {/* Doctor Portal Card */}
+              <div className="bg-gradient-to-b from-blue-950/40 to-slate-900 border border-blue-900/60 rounded-2xl p-6 space-y-5 flex flex-col justify-between">
+                <div className="space-y-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold shadow-md shadow-blue-600/30">
+                    <Stethoscope className="w-5 h-5" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white">Doctor Portal</h3>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Access clinical transcription tools, generate SOAP notes, write e-prescriptions, and manage consultations.
+                  </p>
+
+                  <ul className="space-y-1.5 text-xs text-slate-300 pt-2">
+                    <li className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-blue-400 shrink-0" /> Live Speech Transcription</li>
+                    <li className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-blue-400 shrink-0" /> AI SOAP Note Generator</li>
+                    <li className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-blue-400 shrink-0" /> Prescription & Discharge Management</li>
+                  </ul>
+                </div>
+
+                <Link
+                  href="/doctor/login"
+                  className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-sm"
+                >
+                  Enter Doctor Portal <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
               </div>
 
-              {/* Patient Card */}
-              <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-10 rounded-[2.5rem] hover:border-emerald-500/50 transition-colors">
-                <h3 className="text-3xl font-bold mb-4">For Patients</h3>
-                <p className="text-slate-400 mb-8 text-lg">Everything you need to manage your healthcare journey.</p>
-                
-                <ul className="space-y-4 mb-10">
-                  {["Medical Reports", "Consultation Timeline", "Prescriptions", "Medication Schedule", "Medicine Orders", "Bills & Payments", "Recovery Tracking", "Discharge Documents"].map((item, i) => (
-                    <li key={i} className="flex items-center gap-3 text-slate-300">
-                      <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-                        <Check className="w-3 h-3" />
-                      </div>
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-                
-                <Link href="/signin" className="inline-flex items-center gap-2 bg-emerald-600 text-white font-bold px-6 py-3 rounded-xl hover:bg-emerald-500 transition-colors">
-                  Sign In as Patient <ArrowRight className="w-4 h-4" />
+              {/* Patient Portal Card */}
+              <div className="bg-gradient-to-b from-emerald-950/40 to-slate-900 border border-emerald-900/60 rounded-2xl p-6 space-y-5 flex flex-col justify-between">
+                <div className="space-y-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shadow-md shadow-emerald-600/30">
+                    <User className="w-5 h-5" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white">Patient Portal</h3>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Track your AI recovery score, view digital prescriptions, log daily medication doses, and order online.
+                  </p>
+
+                  <ul className="space-y-1.5 text-xs text-slate-300 pt-2">
+                    <li className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> Personal AI Health Index</li>
+                    <li className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> Smart Pharmacy Savings</li>
+                    <li className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> Consultation Reports & Invoicing</li>
+                  </ul>
+                </div>
+
+                <Link
+                  href="/patient/login"
+                  className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-sm"
+                >
+                  Enter Patient Portal <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
               </div>
 
             </div>
+
           </div>
         </section>
-
-        {/* 5. WHY MEDIPILOT AI */}
-        <section id="why-medipilot" className="py-24 bg-white">
-          <div className="container mx-auto px-4 md:px-8 text-center max-w-4xl">
-            <h2 className="text-3xl md:text-5xl font-bold text-slate-900 mb-6">
-              One Connected Healthcare Journey
-            </h2>
-            <p className="text-slate-600 text-lg md:text-xl leading-relaxed mb-16">
-              From the moment you step into the clinic until you are fully recovered at home, MediPilot AI ensures that your medical data, prescriptions, and recovery tracking are seamlessly integrated.
-            </p>
-
-            <div className="flex flex-wrap justify-center items-center gap-4 text-slate-800 font-bold">
-               <div className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-full">Consultation</div>
-               <ArrowRight className="w-4 h-4 text-slate-400" />
-               <div className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-full">Documentation</div>
-               <ArrowRight className="w-4 h-4 text-slate-400" />
-               <div className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-full">Prescription</div>
-               <ArrowRight className="w-4 h-4 text-slate-400" />
-               <div className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-full">Medication</div>
-               <ArrowRight className="w-4 h-4 text-slate-400 hidden md:block" />
-               <div className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-full">Recovery</div>
-               <ArrowRight className="w-4 h-4 text-slate-400 hidden md:block" />
-               <div className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-full">Discharge</div>
-            </div>
-          </div>
-        </section>
-
-        {/* 6. FINAL CTA */}
-        <section className="py-24 bg-blue-600">
-          <div className="container mx-auto px-4 md:px-8 text-center max-w-3xl">
-            <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">
-              Experience Connected Healthcare
-            </h2>
-            <p className="text-blue-100 text-lg md:text-xl mb-12">
-              Bring consultation, documentation, medication management, recovery, and patient care together with MediPilot AI.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href="/signup" className="w-full sm:w-auto bg-white text-blue-600 font-bold px-8 py-4 rounded-xl hover:bg-blue-50 hover:shadow-lg transition-all">
-                Create Account
-              </Link>
-              <Link href="/signin" className="w-full sm:w-auto bg-blue-700 text-white font-bold px-8 py-4 rounded-xl hover:bg-blue-800 transition-all border border-blue-500">
-                Sign In
-              </Link>
-            </div>
-          </div>
-        </section>
-
       </main>
 
-      <PublicFooter />
-    </div>
-  );
-}
+      {/* FOOTER */}
+      <footer className="py-6 bg-slate-950 border-t border-slate-800/80 px-6">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            <span>MediPilot AI Health Platform © 2026. All rights reserved.</span>
+          </div>
 
-function Check({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
+          <div className="flex items-center gap-5">
+            <span className="hover:text-slate-400 cursor-pointer">Privacy Policy</span>
+            <span className="hover:text-slate-400 cursor-pointer">HIPAA Compliance</span>
+            <span className="hover:text-slate-400 cursor-pointer">Terms of Service</span>
+          </div>
+        </div>
+      </footer>
+
+    </div>
   );
 }

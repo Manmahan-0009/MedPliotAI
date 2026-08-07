@@ -21,8 +21,10 @@ export default function DoctorLoginPage() {
     setError("");
     setLoading(true);
 
+    const cleanEmail = email.trim().toLowerCase();
+
     try {
-      const profile = await login(email, password);
+      const profile = await login(cleanEmail, password);
       if (profile && profile.role === "doctor") {
         router.push("/doctor/dashboard");
       } else if (profile && profile.role === "patient") {
@@ -31,13 +33,13 @@ export default function DoctorLoginPage() {
         router.push("/doctor/dashboard");
       }
     } catch (err: any) {
-      console.error(err);
+      console.error("Doctor login error:", err);
       if (err.code === "auth/invalid-credential" || err.code === "auth/user-not-found" || err.code === "auth/wrong-password") {
         setError("Invalid email or password.");
       } else if (err.code === "auth/invalid-email") {
         setError("Invalid email format.");
       } else {
-        setError(err.message || "Failed to log in.");
+        setError(err.message || "Failed to authenticate. Please check your credentials.");
       }
     } finally {
       setLoading(false);
@@ -58,6 +60,23 @@ export default function DoctorLoginPage() {
           </div>
         </div>
 
+        <div className="mb-6 p-3 bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-xl flex items-center justify-between text-xs">
+          <div>
+            <span className="font-semibold text-blue-800 dark:text-blue-300">Demo Doctor Account:</span>
+            <div className="text-blue-700 dark:text-blue-400">doctor@medipilot.ai / Doctor@123</div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setEmail("doctor@medipilot.ai");
+              setPassword("Doctor@123");
+            }}
+            className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg text-xs transition-colors shrink-0"
+          >
+            Fill Demo
+          </button>
+        </div>
+
         {error && (
           <div className="mb-5 p-3.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400 text-sm flex items-center gap-2.5">
             <AlertCircle className="w-4 h-4 shrink-0" />
@@ -73,11 +92,11 @@ export default function DoctorLoginPage() {
             <div className="relative">
               <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
               <input
-                type="email"
+                type="text"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="doctor@example.com"
+                placeholder="doctor@medipilot.ai"
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-600"
               />
             </div>

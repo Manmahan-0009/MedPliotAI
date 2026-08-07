@@ -20,8 +20,8 @@ export default function SignInPage() {
     const newErrors: { email?: string; password?: string; general?: string } = {};
     if (!email) {
       newErrors.email = "Please enter your email.";
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = "Please enter a valid email.";
+    } else if (email.includes("@") && !/\S+@\S+\.\S+/.test(email)) {
+      newErrors.email = "Please enter a valid email address.";
     }
     
     if (!password) {
@@ -30,6 +30,17 @@ export default function SignInPage() {
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const fillDemoCredentials = () => {
+    if (role === "doctor") {
+      setEmail("doctor@medipilot.ai");
+      setPassword("Doctor@123");
+    } else {
+      setEmail("patient@medipilot.ai");
+      setPassword("Patient@123");
+    }
+    setErrors({});
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -47,7 +58,7 @@ export default function SignInPage() {
       }
     } catch (err: any) {
       console.error("Login error:", err);
-      setErrors({ general: err.message || "Invalid credentials. Please try again." });
+      setErrors({ general: err.message || "Invalid email or password. Click 'Fill Demo' to auto-populate test credentials." });
     } finally {
       setIsSubmitted(false);
     }
@@ -104,7 +115,7 @@ export default function SignInPage() {
           </div>
 
           {/* Role Selector UI */}
-          <div className="mb-8">
+          <div className="mb-6">
             <label className="block text-sm font-bold text-slate-700 mb-3 text-center lg:text-left">Sign in as:</label>
             <div className="flex p-1 bg-slate-200/50 backdrop-blur-sm rounded-2xl border border-white/60">
               <button 
@@ -130,6 +141,24 @@ export default function SignInPage() {
                 Patient
               </button>
             </div>
+          </div>
+
+          <div className="mb-6 p-3.5 bg-slate-100/80 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 rounded-2xl flex items-center justify-between text-xs">
+            <div>
+              <span className="font-semibold text-slate-800 dark:text-slate-200">Demo {role === "doctor" ? "Doctor" : "Patient"} Credentials:</span>
+              <div className="text-slate-600 dark:text-slate-400 font-mono text-[11px] mt-0.5">
+                {role === "doctor" ? "doctor@medipilot.ai / Doctor@123" : "patient@medipilot.ai / Patient@123"}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={fillDemoCredentials}
+              className={`px-3 py-1.5 text-white font-bold rounded-xl text-xs transition-colors shrink-0 ${
+                role === "doctor" ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"
+              }`}
+            >
+              Fill Demo
+            </button>
           </div>
 
           {errors.general && (
