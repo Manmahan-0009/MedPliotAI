@@ -207,3 +207,50 @@
   transform: rotate(8deg) scale(1.1);
   transition: transform 0.25s ease;
 }
+
+/* ──────────────────────────────────────────────────────────────
+   MediPilot AI Unified SaaS Design System Classes
+────────────────────────────────────────────────────────────── */
+.card-premium {
+  @apply bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-xs transition-all hover:shadow-md hover:border-blue-300 dark:hover:border-blue-800;
+}
+
+.btn-primary {
+  @apply px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95;
+}
+
+.btn-secondary {
+  @apply px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 active:scale-95;
+}
+
+.btn-outline {
+  @apply px-4 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 active:scale-95;
+}
+
+.btn-ghost {
+  @apply px-3 py-1.5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold rounded-xl transition-colors;
+}
+
+.heading-xl {
+  @apply text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight;
+}
+
+.heading-l {
+  @apply text-2xl font-bold text-slate-900 dark:text-white tracking-tight;
+}
+
+.heading-m {
+  @apply text-base font-bold text-slate-900 dark:text-white;
+}
+
+.body-large {
+  @apply text-sm text-slate-700 dark:text-slate-300 leading-relaxed;
+}
+
+.body-regular {
+  @apply text-xs text-slate-600 dark:text-slate-400 leading-normal;
+}
+
+.caption-muted {
+  @apply text-[11px] text-slate-400 dark:text-slate-500 font-medium;
+}
