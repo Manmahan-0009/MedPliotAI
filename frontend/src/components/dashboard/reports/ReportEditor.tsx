@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { X, Save, FileSignature } from "lucide-react";
+import { X, Save, FileSignature, Download } from "lucide-react";
+import jsPDF from "jspdf";
 
 export default function ReportEditor({ report, onClose, onSave }: { report: any, onClose: () => void, onSave: () => void }) {
   const [soap, setSoap] = useState(report.soap_notes || { subjective: "", objective: "", assessment: "", plan: "" });
@@ -28,6 +29,56 @@ export default function ReportEditor({ report, onClose, onSave }: { report: any,
     }
   };
 
+  const handleDownloadPdf = () => {
+    const doc = new jsPDF();
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.setTextColor(30, 58, 138);
+    doc.text("MEDIPILOT AI — CLINICAL SOAP REPORT", 14, 20);
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100);
+    doc.text(`Report ID: ${report.id || "N/A"}`, 14, 28);
+    doc.text(`Patient: ${report.patient_name || "Rahul Sharma"} | Status: ${status}`, 14, 34);
+    doc.text(`Doctor: ${report.doctor_name || "Dr. Sarah Mitchell"} | Date: ${new Date().toLocaleDateString()}`, 14, 40);
+
+    doc.setLineWidth(0.5);
+    doc.setDrawColor(226, 232, 240);
+    doc.line(14, 45, 196, 45);
+
+    let y = 55;
+    const sections = [
+      { title: "SUBJECTIVE NOTES", content: soap.subjective || "Patient reports standard progress." },
+      { title: "OBJECTIVE FINDINGS", content: soap.objective || "Vitals within normal limits." },
+      { title: "ASSESSMENT", content: soap.assessment || "Clinical assessment completed." },
+      { title: "TREATMENT PLAN", content: soap.plan || "Follow-up scheduled." }
+    ];
+
+    sections.forEach(sec => {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(15, 23, 42);
+      doc.text(sec.title, 14, y);
+      y += 6;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(51, 65, 85);
+      const lines = doc.splitTextToSize(sec.content, 180);
+      doc.text(lines, 14, y);
+      y += lines.length * 5 + 8;
+    });
+
+    doc.setLineWidth(0.3);
+    doc.line(14, y + 5, 196, y + 5);
+    doc.setFontSize(9);
+    doc.setTextColor(148, 163, 184);
+    doc.text("Authorized by MediPilot AI Clinical System • Confidential Medical Document", 14, y + 12);
+
+    doc.save(`SOAP_Report_${report.patient_name || "Patient"}_${new Date().toISOString().slice(0, 10)}.pdf`);
+  };
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4">
       <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[90vh]">
@@ -37,7 +88,15 @@ export default function ReportEditor({ report, onClose, onSave }: { report: any,
             <FileSignature className="w-5 h-5 text-blue-600" /> 
             Edit Clinical Report
           </h3>
-          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white"><X className="w-5 h-5"/></button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleDownloadPdf}
+              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" /> PDF
+            </button>
+            <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white"><X className="w-5 h-5"/></button>
+          </div>
         </div>
 
         <div className="p-6 overflow-y-auto space-y-6">

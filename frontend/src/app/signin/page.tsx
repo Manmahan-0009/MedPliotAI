@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -26,6 +26,18 @@ export default function SignInPage() {
   const [errors, setErrors]     = useState<{ email?: string; password?: string; general?: string }>({});
   const [loading, setLoading]   = useState(false);
 
+  const [forgotModalOpen, setForgotModalOpen] = useState(false);
+  const [forgotEmail, setForgotEmail]       = useState("");
+  const [forgotSent, setForgotSent]         = useState(false);
+
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("medipilot_remember_email");
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRemember(true);
+    }
+  }, []);
+
   const validate = () => {
     const e: typeof errors = {};
     if (!email)   e.email    = "Please enter your email.";
@@ -45,11 +57,27 @@ export default function SignInPage() {
     if (!validate()) return;
     setLoading(true); setErrors({});
     try {
+      if (remember) {
+        localStorage.setItem("medipilot_remember_email", email);
+      } else {
+        localStorage.removeItem("medipilot_remember_email");
+      }
       const profile = await login(email, password);
       router.push(profile?.role === "doctor" || role === "doctor" ? "/doctor/dashboard" : "/patient/dashboard");
     } catch (err: any) {
       setErrors({ general: err.message || "Invalid email or password." });
     } finally { setLoading(false); }
+  };
+
+  const handleForgotSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail) return;
+    setForgotSent(true);
+    setTimeout(() => {
+      setForgotModalOpen(false);
+      setForgotSent(false);
+      setForgotEmail("");
+    }, 2500);
   };
 
   return (
@@ -68,91 +96,81 @@ export default function SignInPage() {
               <span className="font-bold text-xl text-slate-900 tracking-tight">MediPilot AI</span>
             </Link>
             <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-blue-600 transition-colors">
-              <ArrowLeft className="w-3.5 h-3.5" /> Back
+              <ArrowLeft className="w-4 h-4" /> Home
             </Link>
           </div>
 
           {/* Headline */}
-          <motion.div variants={stagger} initial="hidden" animate="visible" className="space-y-3 max-w-lg">
-            <motion.h1 variants={fadeUp} className="text-3xl font-extrabold text-slate-900 tracking-tight leading-tight">
-              AI That Lets Doctors<br />
-              <span className="text-blue-600">Focus on Patients.</span>
-            </motion.h1>
-            <motion.p variants={fadeUp} className="text-slate-600 text-sm leading-relaxed">
-              Sign in to access consultations, SOAP notes, prescriptions, and patient recovery tracking.
-            </motion.p>
-          </motion.div>
+          <div className="space-y-3">
+            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Clinical AI Portal</h1>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Enterprise EHR intelligence, real-time clinical notes, AI diagnostic reasoning, and patient management.
+            </p>
+          </div>
 
           {/* Animated workspace */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.5 }}>
-            <AiWorkspacePreview compact />
-          </motion.div>
+          <AiWorkspacePreview compact />
         </div>
 
-        <div className="flex items-center gap-4 text-xs font-medium text-slate-500 pt-6">
-          <div className="flex items-center gap-1.5">
-            <ShieldCheck className="w-4 h-4 text-blue-600" /><span>HIPAA Compliant</span>
+        <div className="pt-8 border-t border-slate-200/60 flex items-center justify-between text-xs text-slate-500 font-medium">
+          <div className="flex items-center gap-2 text-emerald-600 font-semibold bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+            <ShieldCheck className="w-3.5 h-3.5" /> HIPAA Compliant 256-bit SSL
           </div>
-          <span>•</span><span>256-bit Encryption</span><span>•</span><span>Enterprise Security</span>
+          <span>MediPilot AI v2.4</span>
         </div>
       </div>
 
-      {/* ── RIGHT PANEL ────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col justify-center items-center p-6 sm:p-12 relative bg-white">
+      {/* ── RIGHT PANEL: FORM ──────────────────────────────── */}
+      <div className="flex-1 flex flex-col justify-center px-6 py-12 lg:px-16 bg-white overflow-y-auto">
+        <div className="max-w-md w-full mx-auto space-y-6">
 
-        <div className="lg:hidden absolute top-6 left-6">
-          <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-blue-600">
-            <ArrowLeft className="w-3.5 h-3.5" /> Back
-          </Link>
-        </div>
+          {/* Role Toggle */}
+          <div className="flex items-center justify-center gap-2 bg-slate-100 p-1 rounded-xl">
+            <button
+              onClick={() => { setRole("patient"); setErrors({}); }}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold transition-all ${
+                role === "patient" ? "bg-white text-blue-600 shadow-sm" : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <User className="w-4 h-4" /> Patient Sign In
+            </button>
+            <button
+              onClick={() => { setRole("doctor"); setErrors({}); }}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold transition-all ${
+                role === "doctor" ? "bg-white text-blue-600 shadow-sm" : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <Stethoscope className="w-4 h-4" /> Doctor Sign In
+            </button>
+          </div>
 
-        <motion.div variants={stagger} initial="hidden" animate="visible"
-          className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-8 shadow-sm space-y-6">
+          <div className="space-y-1 text-center sm:text-left">
+            <h2 className="text-2xl font-bold text-slate-900">
+              Welcome Back, {role === "doctor" ? "Doctor" : "Patient"}
+            </h2>
+            <p className="text-xs text-slate-500">
+              Enter your credentials to access your {role === "doctor" ? "clinical dashboard" : "health portal"}.
+            </p>
+          </div>
 
-          <motion.div variants={fadeUp} className="space-y-1">
-            <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Welcome Back</h2>
-            <p className="text-xs text-slate-500">Sign in to your MediPilot AI workspace.</p>
-          </motion.div>
-
-          {/* Role tabs */}
-          <motion.div variants={fadeUp} className="flex p-1 bg-slate-100 rounded-xl border border-slate-200">
-            {(["doctor", "patient"] as const).map(r => (
-              <button key={r} type="button" onClick={() => { setRole(r); setErrors({}); }}
-                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-                  role === r
-                    ? r === "doctor" ? "bg-white text-blue-600 shadow-sm" : "bg-white text-emerald-600 shadow-sm"
-                    : "text-slate-500 hover:text-slate-900"
-                }`}>
-                {r === "doctor" ? <Stethoscope className="w-3.5 h-3.5" /> : <User className="w-3.5 h-3.5" />}
-                {r.charAt(0).toUpperCase() + r.slice(1)}
-              </button>
-            ))}
-          </motion.div>
-
-          {/* Demo banner */}
-          <motion.div variants={fadeUp} className="p-3 bg-blue-50/80 border border-blue-200 rounded-xl flex items-center justify-between text-xs">
-            <div>
-              <span className="font-semibold text-blue-900">Demo {role === "doctor" ? "Doctor" : "Patient"}:</span>
-              <div className="text-blue-700 font-mono text-[11px] mt-0.5">
-                {role === "doctor" ? "doctor@medipilot.ai / Doctor@123" : "patient@medipilot.ai / Patient@123"}
-              </div>
-            </div>
-            <motion.button type="button" onClick={fillDemo} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-              className="px-2.5 py-1 bg-blue-600 text-white font-semibold rounded-lg text-xs transition-colors shrink-0">
-              Fill Demo
-            </motion.button>
-          </motion.div>
+          {/* Quick Demo Fill */}
+          <div className="p-3 bg-blue-50/60 border border-blue-100 rounded-xl flex items-center justify-between text-xs">
+            <span className="text-blue-900 font-medium">Quick Demo Test Credentials:</span>
+            <button type="button" onClick={fillDemo} className="font-bold text-blue-600 hover:text-blue-700 underline">
+              Fill Demo ({role})
+            </button>
+          </div>
 
           <AnimatePresence>
             {errors.general && (
-              <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                className="p-3.5 bg-red-50 border border-red-200 rounded-xl text-red-600 text-xs font-medium flex items-center gap-2">
+              <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 font-medium flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" /><span>{errors.general}</span>
               </motion.div>
             )}
           </AnimatePresence>
 
-          <motion.form variants={fadeUp} onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">Email Address</label>
               <div className="relative">
@@ -185,7 +203,13 @@ export default function SignInPage() {
                   className="rounded border-slate-300 text-blue-600 focus:ring-blue-600" />
                 Remember Me
               </label>
-              <a href="#" onClick={e => e.preventDefault()} className="text-blue-600 font-medium hover:underline">Forgot Password?</a>
+              <button
+                type="button"
+                onClick={() => setForgotModalOpen(true)}
+                className="text-blue-600 font-medium hover:underline focus:outline-none"
+              >
+                Forgot Password?
+              </button>
             </div>
 
             <motion.button type="submit" disabled={loading}
@@ -195,9 +219,9 @@ export default function SignInPage() {
                 ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /><span>Signing In…</span></>
                 : <span>Sign In</span>}
             </motion.button>
-          </motion.form>
+          </form>
 
-          <motion.div variants={fadeUp} className="pt-3 border-t border-slate-100 flex flex-col items-center gap-2 text-xs">
+          <div className="pt-3 border-t border-slate-100 flex flex-col items-center gap-2 text-xs">
             <p className="text-slate-600 font-medium">
               Don&apos;t have an account?{" "}
               <Link href="/signup" className="font-bold text-blue-600 hover:text-blue-700 transition-colors">
@@ -207,9 +231,62 @@ export default function SignInPage() {
             <Link href="/" className="text-slate-400 hover:text-slate-700 transition-colors text-[11px] mt-1">
               ← Back to Home
             </Link>
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
       </div>
+
+      {/* ── FORGOT PASSWORD MODAL ──────────────────────────── */}
+      <AnimatePresence>
+        {forgotModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-sm bg-white rounded-2xl shadow-xl p-6 border border-slate-100 space-y-4"
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-base text-slate-900">Reset Password</h3>
+                <button
+                  onClick={() => setForgotModalOpen(false)}
+                  className="text-slate-400 hover:text-slate-600 font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {forgotSent ? (
+                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 text-center font-medium">
+                  Password reset link sent to <strong>{forgotEmail}</strong>! Please check your inbox.
+                </div>
+              ) : (
+                <form onSubmit={handleForgotSubmit} className="space-y-3">
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Enter your email address below to receive password recovery instructions.
+                  </p>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Email</label>
+                    <input
+                      type="email"
+                      required
+                      value={forgotEmail}
+                      onChange={e => setForgotEmail(e.target.value)}
+                      placeholder="user@medipilot.ai"
+                      className="w-full px-3 py-2 border rounded-xl text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition-colors"
+                  >
+                    Send Reset Link
+                  </button>
+                </form>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Search, Bell, Plus, Mic, UserPlus, Calendar, Clock, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { GlobalSearchModal } from "@/components/GlobalSearchModal";
 
 interface DoctorTopbarProps {
   onSearch?: (query: string) => void;
@@ -51,21 +52,28 @@ export default function DoctorTopbar({
   const doctorName = userProfile?.doctor_profile?.full_name || "Dr. Sarah Mitchell";
   const doctorSpecialty = userProfile?.doctor_profile?.specialization || "Internal Medicine";
 
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+
   return (
-    <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 flex items-center justify-between shrink-0 transition-colors z-10 shadow-xs">
-      {/* Left: Search Bar */}
-      <div className="flex items-center gap-4 flex-1 max-w-md">
-        <div className="relative w-full">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={handleSearchChange}
-            placeholder="Search patients, consultations, MRNs..."
-            className="w-full bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 placeholder-slate-400 text-xs rounded-xl pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-700/60 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-all"
-          />
+    <>
+      <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 flex items-center justify-between shrink-0 transition-colors z-10 shadow-xs">
+        {/* Left: Search Bar */}
+        <div className="flex items-center gap-4 flex-1 max-w-md">
+          <button
+            onClick={() => setIsSearchModalOpen(true)}
+            className="w-full relative flex items-center bg-slate-50 dark:bg-slate-800/60 text-slate-400 text-xs rounded-xl pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-700/60 hover:border-slate-300 dark:hover:border-slate-600 transition-all text-left group"
+          >
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 group-hover:text-blue-500 transition-colors" />
+            <span className="truncate">Search patients, consultations, MRNs...</span>
+            <kbd className="hidden sm:inline-block ml-auto px-1.5 py-0.5 text-[10px] font-mono bg-white dark:bg-slate-800 text-slate-400 rounded border border-slate-200 dark:border-slate-700 shadow-xs">Ctrl K</kbd>
+          </button>
         </div>
-      </div>
+
+        {/* Global Search Modal */}
+        <GlobalSearchModal
+          isOpen={isSearchModalOpen}
+          onClose={() => setIsSearchModalOpen(false)}
+        />
 
       {/* Right: Date/Time, Quick Actions, Notifications, Profile */}
       <div className="flex items-center gap-4">
@@ -119,5 +127,6 @@ export default function DoctorTopbar({
         </div>
       </div>
     </header>
-  );
+  </>
+);
 }
