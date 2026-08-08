@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/components/ThemeProvider";
+import { notificationService } from "@/lib/api-services";
 import {
   User,
   LayoutDashboard,

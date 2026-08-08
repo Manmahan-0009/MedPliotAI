@@ -36,7 +36,6 @@ import ClinicalTasksWidget from "@/components/dashboard/ClinicalTasksWidget";
 import ActivityFeedWidget from "@/components/dashboard/ActivityFeedWidget";
 import PatientQueueWidget from "@/components/dashboard/PatientQueueWidget";
 import ReportsDashboard from "@/components/dashboard/reports/ReportsDashboard";
-import { AnimatedAIAssistant } from "@/components/animated-ai-assistant";
 import { SmartPharmacyPanel } from "@/components/SmartPharmacyPanel";
 import PendingAppointmentsWidget from "@/components/dashboard/PendingAppointmentsWidget";
 
