@@ -10,6 +10,7 @@ from app.models.timeline import PatientTimeline
 from app.models.analytics import AnalyticsMetric
 from app.models.notification import Notification
 from app.models.health import RecoveryMetric, Invoice, MedicineCatalog
+from app.models.appointment import Appointment, AppointmentStatus
 
 __all__ = [
     "User",
@@ -31,4 +32,6 @@ __all__ = [
     "RecoveryMetric",
     "Invoice",
     "MedicineCatalog",
+    "Appointment",
+    "AppointmentStatus",
 ]

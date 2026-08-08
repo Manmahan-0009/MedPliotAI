@@ -118,7 +118,22 @@ export interface PatientDashboard {
   recovery_journey: Array<{ day: number; title: string; status: string }>;
   current_prescription?: Prescription;
   reports_count: number;
+  upcoming_appointments?: Array<{
+    id: string;
+    appointment_id: string;
+    doctor_name: string;
+    department: string;
+    appointment_date: string;
+    appointment_time: string;
+    consultation_type: string;
+    reason?: string;
+    status: string;
+    rescheduled_date?: string;
+    rescheduled_time?: string;
+  }>;
+  pending_appointment_count?: number;
 }
+
 
 export interface PrescriptionItem {
   id: string;
@@ -203,3 +218,95 @@ export interface ReportDocument {
   type: string;
   consultation_id?: string;
 }
+
+// ── Appointment Types ─────────────────────────────────────────────────────────
+
+export type AppointmentStatusType =
+  | "pending"
+  | "confirmed"
+  | "rejected"
+  | "rescheduled"
+  | "cancelled"
+  | "completed";
+
+export interface Appointment {
+  id: string;
+  appointment_id: string;
+  doctor_id: string;
+  patient_id: string;
+  doctor_name: string;
+  patient_name: string;
+  department: string;
+  appointment_date: string;
+  appointment_time: string;
+  slot?: string;
+  consultation_type: string;
+  reason?: string;
+  notes?: string;
+  status: AppointmentStatusType;
+  ai_checklist?: string[];
+  rescheduled_date?: string;
+  rescheduled_time?: string;
+  created_at: string;
+  patient_details?: {
+    age?: number;
+    gender?: string;
+    blood_group?: string;
+    phone?: string;
+    email?: string;
+    allergies?: string;
+    medical_conditions?: string;
+    current_medications?: string;
+  };
+  doctor_details?: {
+    specialization?: string;
+    department?: string;
+    hospital?: string;
+    consultation_fee?: string;
+    rating?: number;
+  };
+}
+
+export interface AppointmentsByStatus {
+  pending: Appointment[];
+  confirmed: Appointment[];
+  rescheduled: Appointment[];
+  rejected: Appointment[];
+  completed: Appointment[];
+  cancelled: Appointment[];
+  all: Appointment[];
+}
+
+export interface AvailableDoctor {
+  id: string;
+  full_name: string;
+  department: string;
+  specialization: string;
+  medical_registration_number?: string;
+  phone?: string;
+  experience: string;
+  consultation_fee: string;
+  hospital: string;
+  rating: number;
+  today_slots: string[];
+  availability: string;
+  profile_image_url?: string;
+}
+
+// ── Notification Types ────────────────────────────────────────────────────────
+
+export interface NotificationItem {
+  id: string;
+  title: string;
+  message: string;
+  type: string;
+  reference_id?: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface NotificationResult {
+  notifications: NotificationItem[];
+  unread_count: number;
+}
+

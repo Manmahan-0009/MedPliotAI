@@ -51,6 +51,25 @@ export default function PatientSidebar() {
     ? `${userProfile.patient_profile.first_name} ${userProfile.patient_profile.last_name}`
     : "Patient Account";
 
+  const patientId = userProfile?.patient_profile?.patient_id || userProfile?.id || "";
+  const [unreadCount, setUnreadCount] = React.useState<number>(0);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    const loadUnread = async () => {
+      try {
+        const res = await notificationService.getPatientNotifications(patientId || "demo");
+        if (isMounted) setUnreadCount(res.unread_count || 0);
+      } catch {}
+    };
+    loadUnread();
+    const interval = setInterval(loadUnread, 15000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [patientId]);
+
   return (
     <aside className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between p-5 shrink-0 h-screen sticky top-0 transition-colors">
       <div>
@@ -70,18 +89,26 @@ export default function PatientSidebar() {
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href || (item.href !== "/patient/dashboard" && pathname?.startsWith(item.href));
+            const isNotifications = item.name === "Notifications";
             return (
               <Link
                 key={item.name}
                 href={item.href}
-                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-xs transition-all ${
+                className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium text-xs transition-all ${
                   isActive
                     ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold shadow-sm"
                     : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200"
                 }`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400 dark:text-slate-500"}`} />
-                {item.name}
+                <div className="flex items-center gap-3">
+                  <Icon className={`w-4 h-4 ${isActive ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400 dark:text-slate-500"}`} />
+                  {item.name}
+                </div>
+                {isNotifications && unreadCount > 0 && (
+                  <span className="px-1.5 py-0.5 text-[10px] font-bold bg-amber-500 text-white rounded-full">
+                    {unreadCount}
+                  </span>
+                )}
               </Link>
             );
           })}

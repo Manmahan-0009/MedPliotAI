@@ -18,7 +18,21 @@ import {
   AlertCircle,
   CalendarCheck,
   CheckCircle2,
+  Calendar,
+  Plus,
+  Stethoscope,
+  ArrowRight,
+  Bell,
 } from "lucide-react";
+
+const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  pending: { label: "Pending", color: "text-amber-700 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-900/20" },
+  confirmed: { label: "Confirmed", color: "text-emerald-700 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-900/20" },
+  rescheduled: { label: "Rescheduled", color: "text-blue-700 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-900/20" },
+  rejected: { label: "Rejected", color: "text-red-700 dark:text-red-400", bg: "bg-red-50 dark:bg-red-900/20" },
+  cancelled: { label: "Cancelled", color: "text-slate-600 dark:text-slate-400", bg: "bg-slate-100 dark:bg-slate-800" },
+  completed: { label: "Completed", color: "text-purple-700 dark:text-purple-400", bg: "bg-purple-50 dark:bg-purple-900/20" },
+};
 
 export default function PatientDashboardPage() {
   const { userProfile } = useAuth();
@@ -27,12 +41,20 @@ export default function PatientDashboardPage() {
   const [error, setError] = useState("");
   const [doseLogged, setDoseLogged] = useState(false);
 
+  const patientId = userProfile?.patient_profile?.patient_id || userProfile?.id || "";
+
   const loadData = async () => {
     setLoading(true);
     setError("");
     try {
-      const res = await patientService.getDashboard();
-      setData(res);
+      // Pass patient_id so the backend serves the correct patient's data
+      const url = patientId
+        ? `/api/patient/dashboard?patient_id=${encodeURIComponent(patientId)}`
+        : "/api/patient/dashboard";
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${url}`);
+      if (!res.ok) throw new Error("Failed to load patient dashboard");
+      const json = await res.json();
+      setData(json);
     } catch (err: any) {
       console.error("Failed to load patient dashboard:", err);
       setError(err.message || "Failed to load patient data");
@@ -43,7 +65,7 @@ export default function PatientDashboardPage() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [patientId]);
 
   const patientName = userProfile?.patient_profile
     ? `${userProfile.patient_profile.first_name} ${userProfile.patient_profile.last_name}`
@@ -67,6 +89,12 @@ export default function PatientDashboardPage() {
                 </h1>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                   Patient ID: <span className="font-semibold text-emerald-600 dark:text-emerald-400">{data?.profile?.patient_id || userProfile?.patient_profile?.patient_id || "MP-2026-8942"}</span>
+                  {data?.pending_appointment_count && data.pending_appointment_count > 0 ? (
+                    <span className="ml-3 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 text-[10px] font-bold border border-amber-200 dark:border-amber-700">
+                      <Bell className="w-3 h-3" />
+                      {data.pending_appointment_count} pending appointment{data.pending_appointment_count > 1 ? "s" : ""}
+                    </span>
+                  ) : null}
                 </p>
               </div>
 
@@ -156,6 +184,64 @@ export default function PatientDashboardPage() {
                   {/* Left Column (2 spans) */}
                   <div className="lg:col-span-2 space-y-6">
                     
+                    {/* Upcoming Appointments Widget */}
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                          <Calendar className="w-5 h-5 text-emerald-500" />
+                          Upcoming Appointments
+                          {data?.pending_appointment_count && data.pending_appointment_count > 0 ? (
+                            <span className="px-2 py-0.5 text-[10px] font-bold bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-700 rounded-full">
+                              {data.pending_appointment_count} pending
+                            </span>
+                          ) : null}
+                        </h3>
+                        <Link href="/patient/appointments" className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1">
+                          View All <ArrowRight className="w-3 h-3" />
+                        </Link>
+                      </div>
+
+                      {data?.upcoming_appointments && data.upcoming_appointments.length > 0 ? (
+                        <div className="space-y-3">
+                          {data.upcoming_appointments.map((apt) => {
+                            const cfg = STATUS_CONFIG[apt.status] || STATUS_CONFIG.pending;
+                            const effectiveDate = apt.status === "rescheduled" && apt.rescheduled_date ? apt.rescheduled_date : apt.appointment_date;
+                            const effectiveTime = apt.status === "rescheduled" && apt.rescheduled_time ? apt.rescheduled_time : apt.appointment_time;
+                            return (
+                              <Link
+                                key={apt.id}
+                                href="/patient/appointments"
+                                className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-emerald-200 dark:hover:border-emerald-800 transition-colors group"
+                              >
+                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shrink-0">
+                                  <Stethoscope className="w-5 h-5 text-white" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-bold text-sm text-slate-800 dark:text-slate-200 truncate">{apt.doctor_name}</p>
+                                  <p className="text-xs text-slate-500">{apt.department} · {effectiveDate} at {effectiveTime}</p>
+                                </div>
+                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0 ${cfg.color} ${cfg.bg}`}>
+                                  {cfg.label}
+                                </span>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="py-8 text-center">
+                          <Calendar className="w-10 h-10 text-slate-200 dark:text-slate-700 mx-auto mb-2" />
+                          <p className="text-xs text-slate-500 mb-3">No upcoming appointments scheduled</p>
+                          <Link
+                            href="/patient/appointments/book"
+                            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-sm"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            Book Appointment
+                          </Link>
+                        </div>
+                      )}
+                    </div>
+
                     {/* Current Medical Summary Card */}
                     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
                       <div className="flex items-center justify-between">
@@ -238,7 +324,9 @@ export default function PatientDashboardPage() {
                       ) : (
                         <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl space-y-3">
                           <div>
-                            <p className="font-bold text-sm text-slate-900 dark:text-white">Amoxicillin 500mg</p>
+                            <p className="font-bold text-sm text-slate-900 dark:text-white">
+                              {data?.next_medicine?.name || "Amoxicillin 500mg"}
+                            </p>
                             <p className="text-xs text-slate-500">Twice daily · After meals</p>
                           </div>
                           <button
@@ -255,6 +343,10 @@ export default function PatientDashboardPage() {
                     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-3">
                       <h3 className="font-bold text-slate-900 dark:text-white text-sm">Quick Actions</h3>
                       <div className="space-y-2 text-xs">
+                        <Link href="/patient/appointments/book" className="flex items-center justify-between p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 font-medium text-emerald-700 dark:text-emerald-400 transition-colors border border-emerald-100 dark:border-emerald-800/50">
+                          <span>📅 Book New Appointment</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </Link>
                         <Link href="/patient/smart-pharmacy" className="block p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 font-medium text-slate-700 dark:text-slate-300 transition-colors">
                           🛒 Order Prescribed Medicines
                         </Link>
@@ -279,3 +371,4 @@ export default function PatientDashboardPage() {
     </ProtectedRoute>
   );
 }
+

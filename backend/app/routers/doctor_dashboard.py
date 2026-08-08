@@ -6,8 +6,12 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.patient import Patient, PatientStatus
 from app.models.consultation import Consultation
+from app.models.appointment import Appointment, AppointmentStatus
+from app.models.doctor import Doctor
+from app.models.notification import Notification
 
 router = APIRouter(prefix="/api/doctor", tags=["Doctor Dashboard"])
+
 
 # Persistent In-Memory State Store for Interactive Modules
 STORE_APPOINTMENTS = [
@@ -272,6 +276,61 @@ def build_dynamic_patient_queue(db: Session) -> List[dict]:
     return STORE_PATIENT_QUEUE
 
 
+
+def _get_pending_request_count(db: Session) -> int:
+    """Count of pending appointment requests for first doctor in DB."""
+    try:
+        doctor = db.query(Doctor).first()
+        if not doctor:
+            return 0
+        return db.query(Appointment).filter(
+            Appointment.doctor_id == doctor.id,
+            Appointment.status == AppointmentStatus.pending
+        ).count()
+    except Exception:
+        return 0
+
+
+def _get_db_appointments_summary(db: Session) -> dict:
+    """Get today's and upcoming DB appointments for dashboard widget."""
+    try:
+        doctor = db.query(Doctor).first()
+        if not doctor:
+            return {"today": [], "upcoming": [], "pending": []}
+
+        today_str = date.today().isoformat()
+        tomorrow_str = (date.today() + timedelta(days=1)).isoformat()
+        week_end_str = (date.today() + timedelta(days=7)).isoformat()
+
+        all_apts = db.query(Appointment).filter(
+            Appointment.doctor_id == doctor.id
+        ).order_by(Appointment.appointment_date.asc(), Appointment.appointment_time.asc()).all()
+
+        def serialize(a):
+            return {
+                "id": str(a.id),
+                "appointment_id": a.appointment_id,
+                "patient_name": a.patient_name,
+                "patient_id": str(a.patient_id),
+                "appointment_date": a.appointment_date,
+                "appointment_time": a.appointment_time,
+                "consultation_type": a.consultation_type,
+                "department": a.department,
+                "reason": a.reason,
+                "status": a.status.value if hasattr(a.status, 'value') else str(a.status),
+                "rescheduled_date": a.rescheduled_date,
+                "rescheduled_time": a.rescheduled_time,
+            }
+
+        today_apts = [serialize(a) for a in all_apts if a.appointment_date == today_str]
+        upcoming_apts = [serialize(a) for a in all_apts if today_str < a.appointment_date <= week_end_str and a.status.value in ("confirmed", "pending")]
+        pending_apts = [serialize(a) for a in all_apts if a.status.value == "pending"]
+
+        return {"today": today_apts, "upcoming": upcoming_apts, "pending": pending_apts}
+    except Exception as e:
+        return {"today": [], "upcoming": [], "pending": []}
+
+
 @router.get("/dashboard")
 def get_doctor_dashboard_data(db: Session = Depends(get_db)):
     """Compute and return doctor dashboard statistics, activity timeline, tasks, and queues from live database."""
@@ -359,15 +418,216 @@ def get_doctor_dashboard_data(db: Session = Depends(get_db)):
         "todays_tasks": STORE_TASKS,
         "ai_recommended_tasks": STORE_AI_RECOMMENDED_TASKS,
         "patient_queue": active_queue,
-        "layout_preferences": STORE_LAYOUT_PREFERENCES
+        "layout_preferences": STORE_LAYOUT_PREFERENCES,
+        "pending_request_count": _get_pending_request_count(db),
+        "db_appointments": _get_db_appointments_summary(db)
     }
 
 
 # ── Interactive Module Endpoints ─────────────────────────────────────────────
 
 @router.get("/appointments")
-def get_appointments():
-    return STORE_APPOINTMENTS
+def get_appointments(db: Session = Depends(get_db)):
+    """Return DB-backed appointments for the doctor (first doctor in DB for demo, replace with auth-aware doctor_id)."""
+    doctor = db.query(Doctor).first()
+    if not doctor:
+        return {"pending": [], "confirmed": [], "rescheduled": [], "rejected": [], "completed": [], "cancelled": [], "all": []}
+
+    appointments = db.query(Appointment).filter(
+        Appointment.doctor_id == doctor.id
+    ).order_by(Appointment.created_at.desc()).all()
+
+    result = {"pending": [], "confirmed": [], "rescheduled": [], "rejected": [], "completed": [], "cancelled": [], "all": []}
+    for a in appointments:
+        st = a.status.value if hasattr(a.status, 'value') else str(a.status)
+        item = {
+            "id": str(a.id),
+            "appointment_id": a.appointment_id,
+            "doctor_id": str(a.doctor_id),
+            "patient_id": str(a.patient_id),
+            "doctor_name": a.doctor_name,
+            "patient_name": a.patient_name,
+            "department": a.department,
+            "appointment_date": a.appointment_date,
+            "appointment_time": a.appointment_time,
+            "slot": a.slot,
+            "consultation_type": a.consultation_type,
+            "reason": a.reason,
+            "notes": a.notes,
+            "status": st,
+            "ai_checklist": a.ai_checklist or [],
+            "rescheduled_date": a.rescheduled_date,
+            "rescheduled_time": a.rescheduled_time,
+            "created_at": a.created_at.isoformat()
+        }
+        result["all"].append(item)
+        if st in result:
+            result[st].append(item)
+
+    # Also include legacy in-memory appointments for backward compat (merge)
+    return result
+
+
+@router.get("/appointments/pending")
+def get_pending_appointments(doctor_id: Optional[str] = None, db: Session = Depends(get_db)):
+    """Fast endpoint specifically for pending requests widget."""
+    if doctor_id:
+        try:
+            doc_uuid = uuid.UUID(doctor_id)
+            doctor = db.query(Doctor).filter(Doctor.id == doc_uuid).first()
+        except Exception:
+            doctor = db.query(Doctor).filter(Doctor.full_name.ilike(f"%{doctor_id}%")).first()
+    else:
+        doctor = db.query(Doctor).filter(Doctor.full_name == "Dr. Sarah Mitchell").first() or db.query(Doctor).first()
+
+    if doctor:
+        pending = db.query(Appointment).filter(
+            Appointment.doctor_id == doctor.id,
+            Appointment.status == AppointmentStatus.pending
+        ).order_by(Appointment.created_at.desc()).all()
+    else:
+        pending = db.query(Appointment).filter(
+            Appointment.status == AppointmentStatus.pending
+        ).order_by(Appointment.created_at.desc()).all()
+    items = []
+    for a in pending:
+        patient = db.query(Patient).filter(Patient.id == a.patient_id).first()
+        item = {
+            "id": str(a.id),
+            "appointment_id": a.appointment_id,
+            "patient_name": a.patient_name,
+            "patient_id": str(a.patient_id),
+            "department": a.department,
+            "appointment_date": a.appointment_date,
+            "appointment_time": a.appointment_time,
+            "consultation_type": a.consultation_type,
+            "reason": a.reason,
+            "status": "pending",
+            "created_at": a.created_at.isoformat(),
+            "patient_age": patient.age if patient else None,
+            "patient_gender": patient.gender if patient else None,
+            "patient_blood_group": patient.blood_group if patient else None,
+            "patient_phone": patient.phone if patient else None,
+            "patient_conditions": patient.medical_conditions if patient else None,
+        }
+        items.append(item)
+    return {"pending": items, "count": len(items)}
+
+
+class AppointmentActionRequest(BaseModel):
+    notes: Optional[str] = None
+    rescheduled_date: Optional[str] = None
+    rescheduled_time: Optional[str] = None
+
+
+@router.post("/appointments/{appointment_id}/accept")
+def accept_appointment(appointment_id: str, req: AppointmentActionRequest = AppointmentActionRequest(), db: Session = Depends(get_db)):
+    import uuid as _uuid
+    appt = None
+    try:
+        apt_uuid = _uuid.UUID(appointment_id)
+        appt = db.query(Appointment).filter(Appointment.id == apt_uuid).first()
+    except Exception:
+        appt = db.query(Appointment).filter(Appointment.appointment_id == appointment_id).first()
+
+    if not appt:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    appt.status = AppointmentStatus.confirmed
+    if req.notes:
+        appt.notes = req.notes
+
+    notif = Notification(
+        patient_id=appt.patient_id,
+        recipient_role="patient",
+        title="Appointment Confirmed ✅",
+        message=f"Dr. {appt.doctor_name} has confirmed your appointment on {appt.appointment_date} at {appt.appointment_time}.",
+        type="appointment_confirmed",
+        reference_id=appt.appointment_id
+    )
+    db.add(notif)
+
+    STORE_ACTIVITY_FEED.insert(0, {
+        "id": f"act-{len(STORE_ACTIVITY_FEED)+1}",
+        "time": "Just now",
+        "timestamp": datetime.utcnow().isoformat(),
+        "type": "appointment",
+        "title": "Appointment Accepted",
+        "description": f"Appointment with {appt.patient_name} on {appt.appointment_date} at {appt.appointment_time} confirmed.",
+        "patient_name": appt.patient_name,
+        "user": appt.doctor_name,
+        "status": "Confirmed"
+    })
+
+    db.commit()
+    return {"message": "Appointment confirmed", "status": "confirmed"}
+
+
+@router.post("/appointments/{appointment_id}/reject")
+def reject_appointment(appointment_id: str, req: AppointmentActionRequest = AppointmentActionRequest(), db: Session = Depends(get_db)):
+    import uuid as _uuid
+    appt = None
+    try:
+        apt_uuid = _uuid.UUID(appointment_id)
+        appt = db.query(Appointment).filter(Appointment.id == apt_uuid).first()
+    except Exception:
+        appt = db.query(Appointment).filter(Appointment.appointment_id == appointment_id).first()
+
+    if not appt:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    appt.status = AppointmentStatus.rejected
+    if req.notes:
+        appt.notes = req.notes
+
+    notif = Notification(
+        patient_id=appt.patient_id,
+        recipient_role="patient",
+        title="Appointment Not Available ❌",
+        message=f"Dr. {appt.doctor_name} is unable to take your appointment on {appt.appointment_date}. Please choose another slot.",
+        type="appointment_rejected",
+        reference_id=appt.appointment_id
+    )
+    db.add(notif)
+
+    db.commit()
+    return {"message": "Appointment rejected", "status": "rejected"}
+
+
+@router.post("/appointments/{appointment_id}/reschedule")
+def reschedule_appointment_db(appointment_id: str, req: AppointmentActionRequest, db: Session = Depends(get_db)):
+    import uuid as _uuid
+    if not req.rescheduled_date or not req.rescheduled_time:
+        raise HTTPException(status_code=400, detail="rescheduled_date and rescheduled_time are required")
+
+    appt = None
+    try:
+        apt_uuid = _uuid.UUID(appointment_id)
+        appt = db.query(Appointment).filter(Appointment.id == apt_uuid).first()
+    except Exception:
+        appt = db.query(Appointment).filter(Appointment.appointment_id == appointment_id).first()
+
+    if not appt:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    appt.status = AppointmentStatus.rescheduled
+    appt.rescheduled_date = req.rescheduled_date
+    appt.rescheduled_time = req.rescheduled_time
+    if req.notes:
+        appt.notes = req.notes
+
+    notif = Notification(
+        patient_id=appt.patient_id,
+        recipient_role="patient",
+        title="Appointment Rescheduled 📅",
+        message=f"Dr. {appt.doctor_name} has rescheduled your appointment to {req.rescheduled_date} at {req.rescheduled_time}.",
+        type="appointment_rescheduled",
+        reference_id=appt.appointment_id
+    )
+    db.add(notif)
+
+    db.commit()
+    return {"message": "Appointment rescheduled", "status": "rescheduled", "new_date": req.rescheduled_date, "new_time": req.rescheduled_time}
 
 @router.post("/appointments/reschedule")
 def reschedule_appointment(req: RescheduleRequest):

@@ -99,6 +99,8 @@ export default function ClinicalIntelligenceReport({
   const [report, setReport] = useState<ClinicalIntelligenceData | null>(data);
   const [isEditing, setIsEditing] = useState(false);
   const [reviewStatus, setReviewStatus] = useState<string>(data?.doctor_review_status || "Pending Review");
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadStatusMsg, setDownloadStatusMsg] = useState("");
 
   // Accordion Toggle States
   const [expandedSections, setExpandedSections] = useState<{ [key: string]: boolean }>({
@@ -175,9 +177,6 @@ export default function ClinicalIntelligenceReport({
   }
 
   const confidenceScore = report.overall_confidence?.score || report.ai_clinical_reasoning?.confidence_score || 92;
-
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [downloadStatusMsg, setDownloadStatusMsg] = useState("");
 
   const handleDownloadClick = async () => {
     setIsDownloading(true);

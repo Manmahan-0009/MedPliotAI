@@ -12,7 +12,9 @@ from fpdf import FPDF
 from fastapi.responses import FileResponse
 from fastapi.background import BackgroundTasks
 
-from app.routers import patients, consultations, clinical, prescriptions, pharmacy, auth, doctor_dashboard, patient_dashboard
+from app.routers import patients, consultations, clinical, prescriptions, pharmacy, auth, doctor_dashboard, patient_dashboard, reports
+from app.routers import appointments as appointments_router
+from app.routers import notifications as notifications_router
 from app.database import engine, Base
 
 load_dotenv()
@@ -44,6 +46,9 @@ app.include_router(prescriptions.router)
 app.include_router(pharmacy.router)
 app.include_router(doctor_dashboard.router)
 app.include_router(patient_dashboard.router)
+app.include_router(reports.router)
+app.include_router(appointments_router.router)
+app.include_router(notifications_router.router)
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not GROQ_API_KEY:
@@ -252,6 +257,17 @@ async def generate_pdf(req: ReportRequest, background_tasks: BackgroundTasks):
             return ""
         return str(text).encode('latin-1', 'replace').decode('latin-1')
     
+    def safe_multi_cell(w, h, txt, **kwargs):
+        try:
+            pdf.multi_cell(w, h, txt=txt, **kwargs)
+        except Exception as e:
+            print(f"Warning: safe_multi_cell failed for text: {txt[:50]}... Error: {e}")
+            try:
+                # Fallback with forced width
+                pdf.multi_cell(190, h, txt=txt.replace(" ", "  "), **kwargs)
+            except Exception:
+                pass
+                
     # Header & Hospital Banner
     pdf.set_font("Helvetica", 'B', 18)
     pdf.cell(0, 10, txt=clean_text("MediPilot AI - Clinical Decision Support Report"), ln=True, align='C')
@@ -274,11 +290,11 @@ async def generate_pdf(req: ReportRequest, background_tasks: BackgroundTasks):
         pdf.set_font("Helvetica", 'B', 12)
         pdf.cell(0, 7, txt=clean_text("1. Consultation Summary"), ln=True)
         pdf.set_font("Helvetica", size=9)
-        pdf.multi_cell(0, 5, txt=clean_text(f"Chief Complaint: {req.consultation_summary.get('chief_complaint', req.summary)}"))
+        safe_multi_cell(0, 5, txt=clean_text(f"Chief Complaint: {req.consultation_summary.get('chief_complaint', req.summary)}"))
         if req.consultation_summary.get('history_of_present_illness'):
-            pdf.multi_cell(0, 5, txt=clean_text(f"History of Present Illness: {req.consultation_summary.get('history_of_present_illness')}"))
+            safe_multi_cell(0, 5, txt=clean_text(f"History of Present Illness: {req.consultation_summary.get('history_of_present_illness')}"))
         if req.consultation_summary.get('clinical_impression'):
-            pdf.multi_cell(0, 5, txt=clean_text(f"Clinical Impression: {req.consultation_summary.get('clinical_impression')}"))
+            safe_multi_cell(0, 5, txt=clean_text(f"Clinical Impression: {req.consultation_summary.get('clinical_impression')}"))
         pdf.ln(4)
 
     # 2. SOAP Notes
@@ -288,22 +304,22 @@ async def generate_pdf(req: ReportRequest, background_tasks: BackgroundTasks):
         pdf.set_font("Helvetica", 'B', 9)
         pdf.cell(0, 5, txt=clean_text("[Subjective]"), ln=True)
         pdf.set_font("Helvetica", size=9)
-        pdf.multi_cell(0, 5, txt=clean_text(str(req.soap_notes.get('subjective', ''))))
+        safe_multi_cell(0, 5, txt=clean_text(str(req.soap_notes.get('subjective', ''))))
         
         pdf.set_font("Helvetica", 'B', 9)
         pdf.cell(0, 5, txt=clean_text("[Objective]"), ln=True)
         pdf.set_font("Helvetica", size=9)
-        pdf.multi_cell(0, 5, txt=clean_text(str(req.soap_notes.get('objective', ''))))
+        safe_multi_cell(0, 5, txt=clean_text(str(req.soap_notes.get('objective', ''))))
 
         pdf.set_font("Helvetica", 'B', 9)
         pdf.cell(0, 5, txt=clean_text("[Assessment]"), ln=True)
         pdf.set_font("Helvetica", size=9)
-        pdf.multi_cell(0, 5, txt=clean_text(str(req.soap_notes.get('assessment', ''))))
+        safe_multi_cell(0, 5, txt=clean_text(str(req.soap_notes.get('assessment', ''))))
 
         pdf.set_font("Helvetica", 'B', 9)
         pdf.cell(0, 5, txt=clean_text("[Plan]"), ln=True)
         pdf.set_font("Helvetica", size=9)
-        pdf.multi_cell(0, 5, txt=clean_text(str(req.soap_notes.get('plan', ''))))
+        safe_multi_cell(0, 5, txt=clean_text(str(req.soap_notes.get('plan', ''))))
         pdf.ln(4)
 
     # 3. AI Clinical Reasoning
@@ -311,9 +327,9 @@ async def generate_pdf(req: ReportRequest, background_tasks: BackgroundTasks):
         pdf.set_font("Helvetica", 'B', 12)
         pdf.cell(0, 7, txt=clean_text("3. AI Clinical Reasoning & Differential Diagnoses"), ln=True)
         pdf.set_font("Helvetica", size=9)
-        pdf.multi_cell(0, 5, txt=clean_text(f"Reasoning Path: {req.ai_clinical_reasoning.get('reasoning_path', '')}"))
+        safe_multi_cell(0, 5, txt=clean_text(f"Reasoning Path: {req.ai_clinical_reasoning.get('reasoning_path', '')}"))
         if req.ai_clinical_reasoning.get('supporting_evidence'):
-            pdf.multi_cell(0, 5, txt=clean_text(f"Supporting Evidence: {req.ai_clinical_reasoning.get('supporting_evidence')}"))
+            safe_multi_cell(0, 5, txt=clean_text(f"Supporting Evidence: {req.ai_clinical_reasoning.get('supporting_evidence')}"))
         pdf.ln(4)
 
     # 4. Suggested Questions
@@ -322,7 +338,7 @@ async def generate_pdf(req: ReportRequest, background_tasks: BackgroundTasks):
         pdf.cell(0, 7, txt=clean_text("4. Suggested Follow-up Questions"), ln=True)
         pdf.set_font("Helvetica", size=9)
         for q in req.suggested_questions:
-            pdf.multi_cell(0, 5, txt=clean_text(f"• {q}"))
+            safe_multi_cell(0, 5, txt=clean_text(f"• {q}"))
         pdf.ln(4)
 
     # 5. Recommended Tests
@@ -332,9 +348,9 @@ async def generate_pdf(req: ReportRequest, background_tasks: BackgroundTasks):
         pdf.set_font("Helvetica", size=9)
         for t in req.recommended_tests:
             if isinstance(t, dict):
-                pdf.multi_cell(0, 5, txt=clean_text(f"• {t.get('test_name')} [{t.get('priority', 'Routine')}] - Reason: {t.get('reason')}"))
+                safe_multi_cell(0, 5, txt=clean_text(f"• {t.get('test_name')} [{t.get('priority', 'Routine')}] - Reason: {t.get('reason')}"))
             else:
-                pdf.multi_cell(0, 5, txt=clean_text(f"• {t}"))
+                safe_multi_cell(0, 5, txt=clean_text(f"• {t}"))
         pdf.ln(4)
 
     # 6. Clinical Alerts
@@ -344,9 +360,9 @@ async def generate_pdf(req: ReportRequest, background_tasks: BackgroundTasks):
         pdf.set_font("Helvetica", size=9)
         for a in req.clinical_alerts:
             if isinstance(a, dict):
-                pdf.multi_cell(0, 5, txt=clean_text(f"[ALERT] {a.get('title')}: {a.get('message')}"))
+                safe_multi_cell(0, 5, txt=clean_text(f"[ALERT] {a.get('title')}: {a.get('message')}"))
             else:
-                pdf.multi_cell(0, 5, txt=clean_text(f"[ALERT] {a}"))
+                safe_multi_cell(0, 5, txt=clean_text(f"[ALERT] {a}"))
         pdf.ln(4)
 
     # 7. Prescriptions if present
@@ -356,22 +372,37 @@ async def generate_pdf(req: ReportRequest, background_tasks: BackgroundTasks):
         pdf.set_font("Helvetica", size=9)
         for item in req.prescription_items:
             med_details = f"• {item.get('medicine_name', item.get('name'))} | {item.get('dosage')} | {item.get('frequency')} | {item.get('duration')} | {item.get('food_instruction', item.get('timing'))}"
-            pdf.multi_cell(0, 5, txt=clean_text(med_details))
+            safe_multi_cell(0, 5, txt=clean_text(med_details))
         pdf.ln(4)
 
     # 8. Transcript
     pdf.set_font("Helvetica", 'B', 12)
     pdf.cell(0, 7, txt=clean_text("8. Consultation Transcript"), ln=True)
     pdf.set_font("Helvetica", size=8)
-    pdf.multi_cell(0, 4.5, txt=clean_text(req.transcript or "No audio transcript recorded."))
+    safe_multi_cell(0, 4.5, txt=clean_text(req.transcript or "No audio transcript recorded."))
     
-    # Signature Footer
+    # Signature Footer & QR Code
     pdf.ln(12)
+    # Add a simulated QR box on the left, and signature on the right
+    y_before = pdf.get_y()
+    
+    # QR Code placeholder
+    pdf.set_font("Helvetica", 'B', 8)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(30, 30, txt=clean_text("[ QR CODE ]"), border=1, align='C')
+    
+    # Reset X and move down slightly for signature text
+    pdf.set_xy(pdf.get_x() + 20, y_before + 10)
+    pdf.set_text_color(0, 0, 0)
+    
     pdf.set_font("Helvetica", 'B', 10)
     pdf.cell(0, 5, txt=clean_text("__________________________________"), ln=True, align='R')
     pdf.cell(0, 5, txt=clean_text(f"Attending Physician: {req.doctor_name}"), ln=True, align='R')
+    
     pdf.set_font("Helvetica", 'I', 8)
     pdf.cell(0, 5, txt=clean_text("Validated & Signed electronically via MediPilot AI Decision Support System"), ln=True, align='R')
+    
+    pdf.ln(15)
     pdf.cell(0, 5, txt=clean_text("Generated by MediPilot AI Healthcare Platform"), ln=True, align='C')
     
     pdf_filename = f"report_{uuid.uuid4()}.pdf"

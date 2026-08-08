@@ -8,8 +8,10 @@ import os
 from app.database import get_db
 from app.models.patient import Patient, PatientStatus
 from app.models.consultation import Consultation
+from app.models.appointment import Appointment, AppointmentStatus
 
 router = APIRouter(prefix="/api", tags=["Patient Portal"])
+
 
 
 def _get_demo_patient(db: Session) -> Patient:
@@ -37,9 +39,41 @@ def _get_demo_patient(db: Session) -> Patient:
 
 
 @router.get("/patient/dashboard")
-def get_patient_dashboard(db: Session = Depends(get_db)):
-    patient = _get_demo_patient(db)
+def get_patient_dashboard(patient_id: str = None, db: Session = Depends(get_db)):
+    # Try to find patient by the passed patient_id param, fall back to demo
+    patient = None
+    if patient_id:
+        try:
+            pat_uuid = uuid.UUID(patient_id)
+            patient = db.query(Patient).filter(Patient.id == pat_uuid).first()
+        except Exception:
+            patient = db.query(Patient).filter(Patient.patient_id == patient_id).first()
+    if not patient:
+        patient = _get_demo_patient(db)
+
     consultations = db.query(Consultation).filter(Consultation.patient_id == patient.id).all()
+
+    # Fetch upcoming appointments from DB
+    upcoming_appointments_raw = db.query(Appointment).filter(
+        Appointment.patient_id == patient.id,
+        Appointment.status.in_([AppointmentStatus.pending, AppointmentStatus.confirmed, AppointmentStatus.rescheduled])
+    ).order_by(Appointment.appointment_date.asc()).limit(3).all()
+
+    upcoming_appointments = []
+    for a in upcoming_appointments_raw:
+        upcoming_appointments.append({
+            "id": str(a.id),
+            "appointment_id": a.appointment_id,
+            "doctor_name": a.doctor_name,
+            "department": a.department,
+            "appointment_date": a.appointment_date,
+            "appointment_time": a.appointment_time,
+            "consultation_type": a.consultation_type,
+            "reason": a.reason,
+            "status": a.status.value if hasattr(a.status, 'value') else str(a.status),
+            "rescheduled_date": a.rescheduled_date,
+            "rescheduled_time": a.rescheduled_time,
+        })
 
     return {
         "profile": {
@@ -60,13 +94,13 @@ def get_patient_dashboard(db: Session = Depends(get_db)):
             "created_at": patient.created_at.isoformat(),
             "updated_at": patient.updated_at.isoformat()
         },
-        "medication_safety_score": 94,
-        "recovery_score": 88,
+        "medication_safety_score": patient.medication_safety_score or 94,
+        "recovery_score": patient.recovery_score or 88,
         "recovery_trend": "+4% this week",
         "adherence_percentage": 92,
         "next_medicine": {
             "time": "08:00 PM",
-            "name": "Amoxicillin 500mg"
+            "name": patient.current_medications.split(",")[0].strip() if patient.current_medications else "Amoxicillin 500mg"
         },
         "next_follow_up": "2026-08-14",
         "discharge_status": "Eligible for Discharge",
@@ -110,8 +144,11 @@ def get_patient_dashboard(db: Session = Depends(get_db)):
                 }
             ]
         },
-        "reports_count": max(len(consultations), 2)
+        "reports_count": max(len(consultations), 2),
+        "upcoming_appointments": upcoming_appointments,
+        "pending_appointment_count": sum(1 for a in upcoming_appointments_raw if a.status == AppointmentStatus.pending)
     }
+
 
 
 @router.get("/patient/recovery")

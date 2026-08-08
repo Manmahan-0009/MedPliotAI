@@ -35,7 +35,12 @@ import UpcomingAppointmentsWidget from "@/components/dashboard/UpcomingAppointme
 import ClinicalTasksWidget from "@/components/dashboard/ClinicalTasksWidget";
 import ActivityFeedWidget from "@/components/dashboard/ActivityFeedWidget";
 import PatientQueueWidget from "@/components/dashboard/PatientQueueWidget";
-import AiHealthCopilotPanel from "@/components/dashboard/AiHealthCopilotPanel";
+import ReportsDashboard from "@/components/dashboard/reports/ReportsDashboard";
+import { AnimatedAIAssistant } from "@/components/animated-ai-assistant";
+import { SmartPharmacyPanel } from "@/components/SmartPharmacyPanel";
+import PendingAppointmentsWidget from "@/components/dashboard/PendingAppointmentsWidget";
+
+
 
 function DoctorDashboardContent() {
   const searchParams = useSearchParams();
@@ -375,9 +380,6 @@ function DoctorDashboardContent() {
                     })}
                   </div>
 
-                  {/* AI Health Copilot Panel */}
-                  <AiHealthCopilotPanel onSelectPatient={() => setActiveTab("patients")} />
-
                   {/* 2 Column Main Interactive Widgets Grid */}
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Left 2 Cols: Active Patient Queue & Recent Activity Feed */}
@@ -409,11 +411,18 @@ function DoctorDashboardContent() {
                       </div>
                     </div>
 
-                    {/* Right Col: Upcoming Appointments & Today's Clinical Tasks */}
+                    {/* Right Col: Pending Requests + Upcoming Appointments + Today's Clinical Tasks */}
                     <div className="space-y-6 flex flex-col">
                       <div className="h-[420px]">
+                        <PendingAppointmentsWidget
+                          onRefresh={refreshDashboardData}
+                          onShowToast={showToast}
+                        />
+                      </div>
+
+                      <div className="h-[420px]">
                         <UpcomingAppointmentsWidget
-                          appointments={(dashboardData as any)?.upcoming_appointments || []}
+                          appointments={(dashboardData as any)?.db_appointments?.upcoming || (dashboardData as any)?.upcoming_appointments || []}
                           onRefresh={refreshDashboardData}
                           onSelectPatient={(pid) => {
                             const match = patients.find(p => p.patient_id === pid);
@@ -587,15 +596,8 @@ function DoctorDashboardContent() {
                           )}
 
                           {patientDetailTab === "prescriptions" && (
-                            <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl space-y-3 text-xs">
-                              <div className="font-bold text-slate-900 dark:text-white border-b pb-1">Active Prescriptions</div>
-                              <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border flex justify-between items-center">
-                                <div>
-                                  <div className="font-bold">Amoxicillin 500mg</div>
-                                  <div className="text-slate-400">Twice daily (BD) • 5 Days</div>
-                                </div>
-                                <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 font-bold rounded">Active</span>
-                              </div>
+                            <div className="pt-2">
+                              <SmartPharmacyPanel patientId={selectedPatient.patient_id} />
                             </div>
                           )}
 
@@ -728,60 +730,15 @@ function DoctorDashboardContent() {
 
               {/* TAB 4: AI REPORTS */}
               {activeTab === "reports" && (
-                <motion.div key="reports" className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h2 className="text-xl font-bold text-slate-900 dark:text-white">AI Clinical Documentation & Reports</h2>
-                      <p className="text-xs text-slate-500">Automated SOAP notes, consultation reports, and clinical summaries</p>
-                    </div>
-                  </div>
-
-                  <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 space-y-4">
-                    <div className="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-xl border border-blue-100 flex items-center justify-between">
-                      <div>
-                        <div className="font-bold text-sm text-slate-900 dark:text-white">Clinical Consultation Summary (Rahul Sharma - MP-2026-8942)</div>
-                        <div className="text-xs text-slate-500">Generated on {new Date().toLocaleDateString()} • Status: Approved</div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => downloadReportPDF()} className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-xl flex items-center gap-1">
-                          <Download className="w-3.5 h-3.5" /> PDF
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                <motion.div key="reports" className="h-full">
+                  <ReportsDashboard />
                 </motion.div>
               )}
 
               {/* TAB 5: SMART PHARMACY */}
               {activeTab === "pharmacy" && (
                 <motion.div key="pharmacy" className="space-y-6">
-                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">Smart Pharmacy & Generic Alternatives</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border space-y-4">
-                      <h3 className="font-bold text-sm text-slate-800">Prescribed Medicines</h3>
-                      {pharmacyData?.prescribed_medicines?.map((m) => (
-                        <div key={m.id} className="p-3 bg-slate-50 rounded-xl flex justify-between items-center text-xs">
-                          <div>
-                            <div className="font-bold">{m.name} ({m.dosage})</div>
-                            <div className="text-slate-500">{m.frequency} • {m.timing}</div>
-                            {m.generic_alternative && (
-                              <div className="text-emerald-600 font-semibold mt-1">
-                                Generic Alt: {m.generic_alternative.name} (Save ${m.generic_alternative.savings}/mo)
-                              </div>
-                            )}
-                          </div>
-                          <span className="px-2 py-1 bg-emerald-100 text-emerald-800 font-bold rounded">In Stock</span>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border space-y-4">
-                      <h3 className="font-bold text-sm text-slate-800">Safety & Adherence Score</h3>
-                      <div className="p-4 bg-emerald-50 rounded-xl text-center">
-                        <div className="text-3xl font-bold text-emerald-600">94 / 100</div>
-                        <div className="text-xs text-emerald-800 font-medium mt-1">High Safety Rating • Zero Drug-Drug Conflicts</div>
-                      </div>
-                    </div>
-                  </div>
+                  <SmartPharmacyPanel patientId={selectedPatient?.patient_id || "MP-2026-8942"} role="doctor" />
                 </motion.div>
               )}
 

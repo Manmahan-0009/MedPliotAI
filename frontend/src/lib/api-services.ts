@@ -223,3 +223,129 @@ export const analyticsService = {
   getDoctorAnalytics: (): Promise<any> =>
     apiFetch("/api/doctor/dashboard"),
 };
+
+// ── Appointment Service ───────────────────────────────────────────────────────
+export const appointmentService = {
+  /** Get all doctors available for booking */
+  getAvailableDoctors: (params?: {
+    department?: string;
+    query?: string;
+    sort_by?: string;
+  }): Promise<any[]> => {
+    const qp = new URLSearchParams();
+    if (params?.department) qp.append("department", params.department);
+    if (params?.query) qp.append("query", params.query);
+    if (params?.sort_by) qp.append("sort_by", params.sort_by);
+    const qs = qp.toString();
+    return apiFetch(`/api/doctors/available${qs ? "?" + qs : ""}`);
+  },
+
+  /** Get available time slots for a doctor on a date */
+  getDoctorSlots: (doctorId: string, date: string): Promise<{ available_slots: string[] }> =>
+    apiFetch(`/api/doctors/${doctorId}/slots?date=${encodeURIComponent(date)}`),
+
+  /** Book a new appointment */
+  bookAppointment: (data: {
+    doctor_id: string;
+    patient_id: string;
+    appointment_date: string;
+    appointment_time: string;
+    slot?: string;
+    consultation_type?: string;
+    reason?: string;
+  }): Promise<{ message: string; appointment: any; doctor: any }> =>
+    apiFetch("/api/appointments/book", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  /** Get all appointments for a patient */
+  getPatientAppointments: (patientId: string): Promise<any[]> =>
+    apiFetch(`/api/appointments/patient/${patientId}`),
+
+  /** Get appointment stats for patient dashboard */
+  getPatientAppointmentStats: (patientId: string): Promise<any> =>
+    apiFetch(`/api/appointments/patient/${patientId}/stats`),
+
+  /** Get all appointments for a doctor (grouped by status) */
+  getDoctorAppointments: (doctorId: string): Promise<any> =>
+    apiFetch(`/api/appointments/doctor/${doctorId}`),
+
+  /** Get pending appointment requests for doctor */
+  getDoctorPendingAppointments: (doctorId: string): Promise<{ pending: any[]; count: number }> =>
+    apiFetch(`/api/appointments/doctor/${doctorId}/pending`),
+
+  /** Get single appointment detail */
+  getAppointmentDetail: (appointmentId: string): Promise<any> =>
+    apiFetch(`/api/appointments/${appointmentId}`),
+
+  /** Update appointment status (general purpose) */
+  updateStatus: (
+    appointmentId: string,
+    status: string,
+    notes?: string,
+    rescheduled_date?: string,
+    rescheduled_time?: string
+  ): Promise<any> =>
+    apiFetch(`/api/appointments/${appointmentId}/status`, {
+      method: "PUT",
+      body: JSON.stringify({ status, notes, rescheduled_date, rescheduled_time }),
+    }),
+
+  /** Cancel an appointment (patient action) */
+  cancelAppointment: (appointmentId: string): Promise<any> =>
+    apiFetch(`/api/appointments/${appointmentId}/cancel`, { method: "PUT" }),
+
+  /** Accept a pending appointment (doctor action) */
+  acceptAppointment: (appointmentId: string, notes?: string): Promise<any> =>
+    apiFetch(`/api/doctor/appointments/${appointmentId}/accept`, {
+      method: "POST",
+      body: JSON.stringify({ notes }),
+    }),
+
+  /** Reject a pending appointment (doctor action) */
+  rejectAppointment: (appointmentId: string, notes?: string): Promise<any> =>
+    apiFetch(`/api/doctor/appointments/${appointmentId}/reject`, {
+      method: "POST",
+      body: JSON.stringify({ notes }),
+    }),
+
+  /** Reschedule an appointment (doctor action) */
+  rescheduleAppointment: (
+    appointmentId: string,
+    rescheduled_date: string,
+    rescheduled_time: string,
+    notes?: string
+  ): Promise<any> =>
+    apiFetch(`/api/doctor/appointments/${appointmentId}/reschedule`, {
+      method: "POST",
+      body: JSON.stringify({ rescheduled_date, rescheduled_time, notes }),
+    }),
+
+  /** Get doctor appointments grouped by status (doctor dashboard) */
+  getDoctorAppointmentsByStatus: (): Promise<any> =>
+    apiFetch("/api/doctor/appointments"),
+
+  /** Get pending appointments for doctor dashboard widget */
+  getDoctorPendingFromDashboard: (): Promise<{ pending: any[]; count: number }> =>
+    apiFetch("/api/doctor/appointments/pending"),
+};
+
+// ── Notification Service ──────────────────────────────────────────────────────
+export const notificationService = {
+  getDoctorNotifications: (doctorId: string): Promise<{ notifications: any[]; unread_count: number }> =>
+    apiFetch(`/api/notifications/doctor/${doctorId}`),
+
+  getPatientNotifications: (patientId: string): Promise<{ notifications: any[]; unread_count: number }> =>
+    apiFetch(`/api/notifications/patient/${patientId}`),
+
+  markRead: (notificationId: string): Promise<any> =>
+    apiFetch(`/api/notifications/${notificationId}/read`, { method: "PUT" }),
+
+  markAllDoctorRead: (doctorId: string): Promise<any> =>
+    apiFetch(`/api/notifications/read-all/doctor/${doctorId}`, { method: "PUT" }),
+
+  markAllPatientRead: (patientId: string): Promise<any> =>
+    apiFetch(`/api/notifications/read-all/patient/${patientId}`, { method: "PUT" }),
+};
+

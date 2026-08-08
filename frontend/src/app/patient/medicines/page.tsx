@@ -5,7 +5,8 @@ import { ProtectedRoute } from "@/lib/protected-route";
 import { prescriptionService, pharmacyService } from "@/lib/api-services";
 import { Prescription } from "@/lib/types";
 import PatientSidebar from "@/components/patient-sidebar";
-import { Pill, AlertCircle, Info, RefreshCw, CheckCircle2, User, Calendar } from "lucide-react";
+import { Pill, AlertCircle, RefreshCw, User, Calendar } from "lucide-react";
+import { SmartPharmacyPanel } from "@/components/SmartPharmacyPanel";
 
 export default function MedicinesPage() {
   const [prescription, setPrescription] = useState<Prescription | null>(null);
@@ -100,91 +101,8 @@ export default function MedicinesPage() {
               </div>
 
               {/* Medicines Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {(prescription?.items || [
-                  {
-                    id: "m1",
-                    name: "Amoxicillin",
-                    dosage: "500mg",
-                    frequency: "Twice daily",
-                    timing: "After meals",
-                    duration: "5 days",
-                    prescribed_qty: 10,
-                    remaining_qty: 6,
-                    status: "Active",
-                  },
-                  {
-                    id: "m2",
-                    name: "Paracetamol",
-                    dosage: "650mg",
-                    frequency: "As needed (max 3/day)",
-                    timing: "After meals",
-                    duration: "3 days",
-                    prescribed_qty: 9,
-                    remaining_qty: 4,
-                    status: "Active",
-                  },
-                ]).map((item) => {
-                  const isLogged = loggedDoses[item.id];
-                  return (
-                    <div key={item.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm flex flex-col justify-between space-y-4">
-                      <div>
-                        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold border border-emerald-100 dark:border-emerald-800/50">
-                              <Pill className="w-5 h-5" />
-                            </div>
-                            <div>
-                              <h3 className="font-bold text-slate-900 dark:text-white text-base">{item.name}</h3>
-                              <span className="text-xs font-semibold text-slate-500">{item.dosage}</span>
-                            </div>
-                          </div>
-                          <span className="bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 text-xs px-2.5 py-1 rounded-full font-bold">
-                            {item.status}
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3 my-4 text-xs">
-                          <div className="p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
-                            <p className="text-slate-400 mb-0.5">Frequency</p>
-                            <p className="font-bold text-slate-800 dark:text-slate-200">{item.frequency}</p>
-                          </div>
-                          <div className="p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
-                            <p className="text-slate-400 mb-0.5">Duration</p>
-                            <p className="font-bold text-slate-800 dark:text-slate-200">{item.duration}</p>
-                          </div>
-                          <div className="p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
-                            <p className="text-slate-400 mb-0.5">Quantity</p>
-                            <p className="font-bold text-slate-800 dark:text-slate-200">{item.remaining_qty} / {item.prescribed_qty} left</p>
-                          </div>
-                          <div className="p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
-                            <p className="text-slate-400 mb-0.5">Instructions</p>
-                            <p className="font-bold text-slate-800 dark:text-slate-200">{item.timing}</p>
-                          </div>
-                        </div>
-
-                        <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl text-xs flex items-center gap-2 text-slate-600 dark:text-slate-300">
-                          <Info className="w-4 h-4 text-emerald-500 shrink-0" />
-                          <span>Take strictly as directed. Consult doctor before discontinuing.</span>
-                        </div>
-                      </div>
-
-                      <div className="pt-2 flex gap-3">
-                        <button
-                          onClick={() => toggleDose(item.id)}
-                          className={`flex-1 py-2.5 px-3 rounded-xl font-semibold text-xs transition-colors flex items-center justify-center gap-2 ${
-                            isLogged
-                              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
-                              : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
-                          }`}
-                        >
-                          <CheckCircle2 className="w-4 h-4" />
-                          {isLogged ? "Dose Logged ✓" : "Log Dose Taken"}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="mt-4">
+                <SmartPharmacyPanel patientId={prescription?.patient_id || "MP-2026-8942"} role="patient" />
               </div>
 
             </div>
