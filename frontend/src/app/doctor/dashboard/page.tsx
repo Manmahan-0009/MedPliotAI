@@ -37,6 +37,8 @@ import ActivityFeedWidget from "@/components/dashboard/ActivityFeedWidget";
 import PatientQueueWidget from "@/components/dashboard/PatientQueueWidget";
 import ReportsDashboard from "@/components/dashboard/reports/ReportsDashboard";
 import { SmartPharmacyPanel } from "@/components/SmartPharmacyPanel";
+import { ClinicalRecoveryCenter } from "@/components/recovery/ClinicalRecoveryCenter";
+import { SmartDischargeCenter } from "@/components/discharge/SmartDischargeCenter";
 import PendingAppointmentsWidget from "@/components/dashboard/PendingAppointmentsWidget";
 
 
@@ -601,21 +603,14 @@ function DoctorDashboardContent() {
                           )}
 
                           {patientDetailTab === "recovery" && (
-                            <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl space-y-3 text-xs">
-                              <div className="font-bold text-slate-900 dark:text-white">Recovery Score: 88 / 100</div>
-                              <div className="w-full bg-slate-200 rounded-full h-2">
-                                <div className="bg-emerald-500 h-2 rounded-full w-[88%]" />
-                              </div>
-                              <p className="text-slate-500">Medication Adherence: 92% • Vitals Stable</p>
+                            <div className="pt-2">
+                              <ClinicalRecoveryCenter patientId={selectedPatient.patient_id} role="doctor" onShowToast={showToast} />
                             </div>
                           )}
 
                           {patientDetailTab === "discharge" && (
-                            <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl space-y-3 text-xs">
-                              <div className="font-bold text-emerald-600 flex items-center gap-1.5">
-                                <CheckCircle2 className="w-4 h-4" /> Ready for Smart Discharge
-                              </div>
-                              <p className="text-slate-600">All clinical parameters validated. Download complete discharge package.</p>
+                            <div className="pt-2">
+                              <SmartDischargeCenter patientId={selectedPatient.patient_id || selectedPatient.id} role="doctor" onShowToast={showToast} />
                             </div>
                           )}
                         </div>
@@ -744,61 +739,146 @@ function DoctorDashboardContent() {
               {/* TAB 6: RECOVERY ANALYTICS */}
               {activeTab === "recovery" && (
                 <motion.div key="recovery" className="space-y-6">
-                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">Recovery Analytics & Vitals Monitoring</h2>
-                  <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border space-y-4">
-                    <div className="flex items-center justify-between border-b pb-4">
-                      <div>
-                        <div className="text-2xl font-bold text-slate-900">{recoveryData?.recovery_score || 88}%</div>
-                        <div className="text-xs text-slate-500">Overall Patient Recovery Progress</div>
+                  {/* Patient Selector Card Header */}
+                  <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-10 h-10 rounded-2xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
+                          <Users className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="font-black text-slate-900 dark:text-white text-base tracking-tight">
+                            Select Patient for Recovery Analysis
+                          </h3>
+                          <p className="text-xs text-slate-500">
+                            Choose a patient from your clinical queue to generate real-time AI recovery telemetry.
+                          </p>
+                        </div>
                       </div>
-                      <span className="px-3 py-1 bg-emerald-100 text-emerald-800 font-bold text-xs rounded-full">
-                        {recoveryData?.recovery_trend || "+4% this week"}
-                      </span>
+
+                      {/* Dropdown Select Box */}
+                      <div className="w-full sm:w-72">
+                        <select
+                          value={selectedPatient?.patient_id || selectedPatient?.id || ""}
+                          onChange={(e) => {
+                            const p = patients.find(pat => pat.patient_id === e.target.value || pat.id === e.target.value);
+                            if (p) setSelectedPatient(p);
+                          }}
+                          className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-bold text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none shadow-xs"
+                        >
+                          {patients.map((p) => (
+                            <option key={p.id || p.patient_id} value={p.patient_id || p.id}>
+                              {p.first_name} {p.last_name} ({p.patient_id}) — {p.gender}, {p.age}y
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
 
-                    <div className="space-y-3 pt-2">
-                      <h4 className="font-bold text-xs text-slate-700">Recovery Journey Timeline</h4>
-                      {recoveryData?.recovery_journey?.map((step, idx) => (
-                        <div key={idx} className="flex items-center gap-3 text-xs p-2.5 bg-slate-50 rounded-xl">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                          <span className="font-bold text-slate-800">Day {step.day}:</span>
-                          <span className="text-slate-600">{step.title}</span>
-                        </div>
-                      ))}
-                    </div>
+                    {/* Quick Patient Chips */}
+                    {patients.length > 0 && (
+                      <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Quick Select Patient:</span>
+                        {patients.slice(0, 6).map((p) => {
+                          const isSelected = selectedPatient?.patient_id === p.patient_id || selectedPatient?.id === p.id;
+                          return (
+                            <button
+                              key={p.id || p.patient_id}
+                              onClick={() => setSelectedPatient(p)}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                                isSelected
+                                  ? "bg-emerald-600 text-white shadow-xs"
+                                  : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                              }`}
+                            >
+                              <span className={`w-2 h-2 rounded-full ${isSelected ? "bg-white" : "bg-emerald-500"}`} />
+                              {p.first_name} {p.last_name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
+
+                  {/* Clinical Recovery Center Component */}
+                  <ClinicalRecoveryCenter 
+                    patientId={selectedPatient?.patient_id || selectedPatient?.id || "MP-2026-8942"} 
+                    role="doctor" 
+                    onShowToast={showToast} 
+                  />
                 </motion.div>
               )}
 
               {/* TAB 7: DISCHARGE CENTER */}
               {activeTab === "discharge" && (
                 <motion.div key="discharge" className="space-y-6">
-                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">Smart Discharge Center</h2>
-                  <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border space-y-4">
-                    <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200">
-                      <div className="font-bold text-emerald-800 text-sm mb-1">AI Validation Passed ✅</div>
-                      <div className="text-xs text-emerald-700">
-                        SOAP, Prescriptions, Recovery Metrics, and Billing details have been validated for patient discharge.
+                  {/* Patient Selector Card Header */}
+                  <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-10 h-10 rounded-2xl bg-purple-100 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
+                          <Users className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="font-black text-slate-900 dark:text-white text-base tracking-tight">
+                            Select Patient for Hospital Discharge
+                          </h3>
+                          <p className="text-xs text-slate-500">
+                            Choose a patient to generate, review, and finalize a patient-specific hospital discharge summary & bill.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Dropdown Select Box */}
+                      <div className="w-full sm:w-72">
+                        <select
+                          value={selectedPatient?.patient_id || selectedPatient?.id || ""}
+                          onChange={(e) => {
+                            const p = patients.find(pat => pat.patient_id === e.target.value || pat.id === e.target.value);
+                            if (p) setSelectedPatient(p);
+                          }}
+                          className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-bold text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none shadow-xs"
+                        >
+                          {patients.map((p) => (
+                            <option key={p.id || p.patient_id} value={p.patient_id || p.id}>
+                              {p.first_name} {p.last_name} ({p.patient_id}) — {p.gender}, {p.age}y
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     </div>
 
-                    <div className="space-y-2 text-xs">
-                      <div className="font-bold">Invoices & Summary</div>
-                      {dischargeData?.invoices?.map((inv) => (
-                        <div key={inv.id} className="p-3 bg-slate-50 rounded-xl flex justify-between items-center">
-                          <div>
-                            <div className="font-bold">{inv.type}</div>
-                            <div className="text-slate-400">{inv.id} • {inv.date}</div>
-                          </div>
-                          <div className="font-bold text-slate-900">${inv.amount.toFixed(2)}</div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <button onClick={() => downloadReportPDF()} className="w-full py-3 bg-blue-600 text-white font-bold text-xs rounded-xl shadow-xs">
-                      Download Complete Discharge PDF Package
-                    </button>
+                    {/* Quick Patient Chips */}
+                    {patients.length > 0 && (
+                      <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Quick Select Patient:</span>
+                        {patients.slice(0, 6).map((p) => {
+                          const isSelected = selectedPatient?.patient_id === p.patient_id || selectedPatient?.id === p.id;
+                          return (
+                            <button
+                              key={p.id || p.patient_id}
+                              onClick={() => setSelectedPatient(p)}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                                isSelected
+                                  ? "bg-purple-600 text-white shadow-xs"
+                                  : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                              }`}
+                            >
+                              <span className={`w-2 h-2 rounded-full ${isSelected ? "bg-white" : "bg-purple-500"}`} />
+                              {p.first_name} {p.last_name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
+
+                  {/* Smart Discharge Center Component */}
+                  <SmartDischargeCenter 
+                    patientId={selectedPatient?.patient_id || selectedPatient?.id || "MP-2026-8942"} 
+                    role="doctor" 
+                    onShowToast={showToast} 
+                  />
                 </motion.div>
               )}
 

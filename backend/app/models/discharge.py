@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, Text, ForeignKey, JSON
+from sqlalchemy import Column, String, DateTime, Text, ForeignKey, JSON, Float
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -12,9 +12,25 @@ class Discharge(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     patient_id = Column(UUID(as_uuid=True), ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True)
-    consultation_id = Column(UUID(as_uuid=True), ForeignKey("consultations.id", ondelete="CASCADE"), nullable=True, index=True)
+    consultation_id = Column(UUID(as_uuid=True), ForeignKey("consultations.id", ondelete="SET NULL"), nullable=True, index=True)
     
     doctor_name = Column(String(200), nullable=True)
+    doctor_id = Column(UUID(as_uuid=True), ForeignKey("doctors.id", ondelete="SET NULL"), nullable=True)
+    
+    # AI Readiness
+    readiness_score = Column(Float, default=92.0)
+    readiness_checklist = Column(JSON, nullable=True)
+    
+    # Clinical Content
+    admission_summary = Column(JSON, nullable=True)
+    hospital_course = Column(JSON, nullable=True)
+    final_diagnosis = Column(JSON, nullable=True)
+    procedures_performed = Column(JSON, nullable=True)
+    treatment_summary = Column(JSON, nullable=True)
+    discharge_medications = Column(JSON, nullable=True)
+    followup_plan = Column(JSON, nullable=True)
+    ai_recommendations = Column(JSON, nullable=True)
+    
     discharge_summary = Column(Text, nullable=True)
     patient_instructions = Column(Text, nullable=True)
     lifestyle_advice = Column(Text, nullable=True)
@@ -22,11 +38,17 @@ class Discharge(Base):
     exercise_advice = Column(Text, nullable=True)
     follow_up = Column(String(200), nullable=True)
     
-    status = Column(String(50), default="Pending", nullable=False) # Pending, Complete
-    
+    # Billing & Financials
+    billing_breakdown = Column(JSON, nullable=True)
     billing_total = Column(String(50), nullable=True)
     receipt_url = Column(String(500), nullable=True)
     discharge_pdf_url = Column(String(500), nullable=True)
+    
+    # Status & Security Audit
+    status = Column(String(50), default="Pending", nullable=False) # Pending, AI Generated, Doctor Reviewing, Approved, Discharged, Archived
+    approved_by = Column(String(200), nullable=True)
+    approved_at = Column(DateTime, nullable=True)
+    audit_log = Column(JSON, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

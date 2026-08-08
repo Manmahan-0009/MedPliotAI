@@ -90,6 +90,26 @@ export default function UpcomingAppointmentsWidget({
     setSelectedApp(null);
   };
 
+  const handleDropStatusZone = async (e: React.DragEvent, targetStatus: string) => {
+    e.preventDefault();
+    const app_id = e.dataTransfer.getData("appointment_id") || draggedAppId;
+    if (!app_id) return;
+
+    try {
+      setAppointments(prev =>
+        prev.map(a => (a.id === app_id ? { ...a, status: targetStatus } : a))
+      );
+      await doctorService.rescheduleAppointment(app_id, "afternoon", undefined, undefined);
+      onShowToast(`Appointment marked as ${targetStatus}`);
+      onRefresh();
+    } catch (err) {
+      console.error(err);
+      onShowToast("Failed to update status");
+    } finally {
+      setDraggedAppId(null);
+    }
+  };
+
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col h-full font-sans">
       {/* Widget Header */}
@@ -98,7 +118,7 @@ export default function UpcomingAppointmentsWidget({
           <h3 className="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
             <CalendarIcon className="w-4 h-4 text-blue-600" /> Upcoming Appointments
           </h3>
-          <p className="text-xs text-slate-500">Drag to reschedule or click for quick clinical actions</p>
+          <p className="text-xs text-slate-500">Drag to reschedule slot or update status</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -113,7 +133,7 @@ export default function UpcomingAppointmentsWidget({
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/60 rounded-xl mb-4 text-xs font-bold">
+      <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/60 rounded-xl mb-3 text-xs font-bold">
         {(["today", "upcoming", "weekly", "monthly"] as const).map(range => (
           <button
             key={range}
@@ -126,6 +146,25 @@ export default function UpcomingAppointmentsWidget({
           >
             {range}
           </button>
+        ))}
+      </div>
+
+      {/* Status Drag & Drop Target Banner */}
+      <div className="grid grid-cols-3 gap-2 mb-3 bg-slate-100 dark:bg-slate-800/50 p-2 rounded-xl text-[10px] font-bold">
+        {[
+          { key: "Completed", label: "Completed", color: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300" },
+          { key: "Cancelled", label: "Cancelled", color: "bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300" },
+          { key: "Rescheduled", label: "Rescheduled", color: "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300" }
+        ].map(st => (
+          <div
+            key={st.key}
+            onDragOver={e => e.preventDefault()}
+            onDrop={e => handleDropStatusZone(e, st.key)}
+            className={`py-1.5 px-2 rounded-lg text-center border border-dashed border-slate-300 dark:border-slate-700 cursor-pointer transition-all hover:scale-102 ${st.color}`}
+            title={`Drag appointment here to set status to ${st.label}`}
+          >
+            Drop → {st.label}
+          </div>
         ))}
       </div>
 

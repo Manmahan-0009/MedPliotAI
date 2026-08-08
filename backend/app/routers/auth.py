@@ -8,6 +8,9 @@ from app.database import get_db
 from app.models.user import User, UserRole
 from app.models.doctor import Doctor
 from app.models.patient import Patient, PatientStatus
+from app.models.notification import Notification
+from app.models.health import RecoveryMetric
+from app.models.timeline import PatientTimeline
 from app.schemas.auth import DoctorSignupRequest, PatientSignupRequest, UserProfileOut, LoginRequest
 from app.core.firebase import verify_firebase_token, optional_verify_firebase_token
 
@@ -169,21 +172,26 @@ async def login_user(req: LoginRequest, db: Session = Depends(get_db)):
 
 @router.post("/register-doctor", response_model=UserProfileOut, status_code=201)
 async def register_doctor(req: DoctorSignupRequest, db: Session = Depends(get_db)):
+    import json
+    import uuid as _uuid
+
     clean_email = req.email.strip().lower()
+    firebase_uid = req.firebase_uid or f"uid_doc_{_uuid.uuid4().hex[:12]}"
+
     existing_user = db.query(User).filter(
-        (User.firebase_uid == req.firebase_uid) | (func.lower(User.email) == clean_email)
+        (User.firebase_uid == firebase_uid) | (func.lower(User.email) == clean_email)
     ).first()
-    
+
     if existing_user:
         raise HTTPException(
             status_code=400,
-            detail="User with this email or Firebase UID already exists in database"
+            detail="An account with this email address already exists. Please sign in."
         )
-    
-    pwd_hash = hash_password(req.password) if req.password else None
+
+    pwd_hash = hash_password(req.password) if req.password else hash_password("Doctor@123")
 
     user = User(
-        firebase_uid=req.firebase_uid,
+        firebase_uid=firebase_uid,
         email=clean_email,
         password_hash=pwd_hash,
         role=UserRole.doctor
@@ -191,15 +199,38 @@ async def register_doctor(req: DoctorSignupRequest, db: Session = Depends(get_db
     db.add(user)
     db.flush()
 
+    default_slots = json.dumps(["09:00 AM", "10:00 AM", "11:00 AM", "02:00 PM", "03:00 PM", "04:00 PM"])
+
     doctor = Doctor(
         user_id=user.id,
         full_name=req.full_name,
-        department=req.department,
-        specialization=req.specialization,
-        medical_registration_number=req.medical_registration_number,
-        phone=req.phone,
+        department=req.department or "General Medicine",
+        specialization=req.specialization or "Consultant Physician",
+        medical_registration_number=req.medical_registration_number or f"REG-2026-{_uuid.uuid4().hex[:4].upper()}",
+        phone=req.phone or "9876543200",
+        experience_years=req.experience_years or 5,
+        qualification=req.qualification or "MBBS, MD",
+        hospital=req.hospital or "MediPilot Super Speciality Hospital",
+        verification_status="Approved",
+        consultation_fee="₹800",
+        rating=4.9,
+        availability_status="Available Today",
+        available_slots=default_slots,
+        profile_image_url=req.profile_photo or "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=300"
     )
     db.add(doctor)
+
+    # Initialize Welcome Notification
+    welcome_notif = Notification(
+        user_id=user.id,
+        doctor_id=doctor.id,
+        recipient_role="doctor",
+        title="Welcome to MediPilot AI! 🩺",
+        message=f"Welcome {req.full_name}! Your clinical dashboard, availability schedule, and AI workspace have been initialized.",
+        type="welcome"
+    )
+    db.add(welcome_notif)
+
     db.commit()
     db.refresh(user)
 
@@ -216,6 +247,9 @@ async def register_doctor(req: DoctorSignupRequest, db: Session = Depends(get_db
             "specialization": doctor.specialization,
             "medical_registration_number": doctor.medical_registration_number,
             "phone": doctor.phone,
+            "qualification": doctor.qualification,
+            "hospital": doctor.hospital,
+            "verification_status": doctor.verification_status,
         },
         "patient_profile": None
     }
@@ -223,21 +257,25 @@ async def register_doctor(req: DoctorSignupRequest, db: Session = Depends(get_db
 
 @router.post("/register-patient", response_model=UserProfileOut, status_code=201)
 async def register_patient(req: PatientSignupRequest, db: Session = Depends(get_db)):
+    import uuid as _uuid
+
     clean_email = req.email.strip().lower()
+    firebase_uid = req.firebase_uid or f"uid_pat_{_uuid.uuid4().hex[:12]}"
+
     existing_user = db.query(User).filter(
-        (User.firebase_uid == req.firebase_uid) | (func.lower(User.email) == clean_email)
+        (User.firebase_uid == firebase_uid) | (func.lower(User.email) == clean_email)
     ).first()
 
     if existing_user:
         raise HTTPException(
             status_code=400,
-            detail="User with this email or Firebase UID already exists in database"
+            detail="An account with this email address already exists. Please sign in."
         )
 
-    pwd_hash = hash_password(req.password) if req.password else None
+    pwd_hash = hash_password(req.password) if req.password else hash_password("Patient@123")
 
     user = User(
-        firebase_uid=req.firebase_uid,
+        firebase_uid=firebase_uid,
         email=clean_email,
         password_hash=pwd_hash,
         role=UserRole.patient
@@ -246,23 +284,70 @@ async def register_patient(req: PatientSignupRequest, db: Session = Depends(get_
     db.flush()
 
     patient_id = _generate_patient_id(db)
-    age = _calculate_age(req.date_of_birth) if req.date_of_birth else None
+    age = _calculate_age(req.date_of_birth) if req.date_of_birth else 28
 
     patient = Patient(
         user_id=user.id,
         patient_id=patient_id,
         first_name=req.first_name,
         last_name=req.last_name,
-        gender=req.gender,
-        date_of_birth=req.date_of_birth,
+        gender=req.gender or "Male",
+        date_of_birth=req.date_of_birth or date(1998, 5, 14),
         age=age,
-        blood_group=req.blood_group,
-        phone=req.phone,
+        blood_group=req.blood_group or "O+",
+        phone=req.phone or "9123456780",
         email=clean_email,
-        address=req.address,
-        status=PatientStatus.active
+        address=req.address or "Bengaluru, Karnataka",
+        emergency_contact=req.emergency_contact,
+        profile_image_url=req.profile_photo or "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300",
+        status=PatientStatus.active,
+        recovery_score=85,
+        medication_safety_score=100
     )
     db.add(patient)
+    db.flush()
+
+    # Initialize Baseline Recovery Metric
+    recovery = RecoveryMetric(
+        patient_id=patient.id,
+        recovery_score=85,
+        recovery_trend="improving",
+        adherence_percentage=100,
+        medication_safety_score=100,
+        recovery_journey=[{
+            "day": 1,
+            "status": "Account Initialized",
+            "score": 85,
+            "notes": "Patient profile and health records created."
+        }],
+        timeline_events=[{
+            "title": "Welcome to MediPilot Health",
+            "date": datetime.utcnow().strftime("%Y-%m-%d"),
+            "category": "Onboarding"
+        }]
+    )
+    db.add(recovery)
+
+    # Initialize Timeline Event
+    timeline_event = PatientTimeline(
+        patient_id=patient.id,
+        event_type="Registration",
+        event_title="Account & Health Profile Initialized",
+        event_description=f"Welcome {req.first_name}! Your MediPilot AI patient account has been created."
+    )
+    db.add(timeline_event)
+
+    # Initialize Welcome Notification
+    welcome_notif = Notification(
+        user_id=user.id,
+        patient_id=patient.id,
+        recipient_role="patient",
+        title="Welcome to MediPilot Health! 🌿",
+        message=f"Welcome {req.first_name}! Your personal health portal, appointments, and medication tracker have been initialized.",
+        type="welcome"
+    )
+    db.add(welcome_notif)
+
     db.commit()
     db.refresh(user)
 

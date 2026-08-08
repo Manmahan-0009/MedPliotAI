@@ -54,6 +54,42 @@ export default function ClinicalTasksWidget({
   const totalCount = tasks.length;
   const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
+  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+
+  const handleDragStartTask = (e: React.DragEvent, id: string) => {
+    e.dataTransfer.setData("task_id", id);
+    setDraggedTaskId(id);
+  };
+
+  const handleDropPriorityZone = async (e: React.DragEvent, targetPriority: "High" | "Medium" | "Low" | "Completed") => {
+    e.preventDefault();
+    const taskId = e.dataTransfer.getData("task_id") || draggedTaskId;
+    if (!taskId) return;
+
+    const isCompleted = targetPriority === "Completed";
+    const actualPriority = isCompleted ? "Medium" : targetPriority;
+
+    setTasks(prev =>
+      prev.map(t => (t.id === taskId ? {
+        ...t,
+        priority: actualPriority,
+        completed: isCompleted,
+        status: isCompleted ? "Completed" : t.status
+      } : t))
+    );
+
+    try {
+      await doctorService.updateTaskPriority(taskId, targetPriority, isCompleted ? "Completed" : "Pending", isCompleted);
+      onShowToast(`Task priority set to ${targetPriority}`);
+      onRefresh();
+    } catch (err) {
+      console.error(err);
+      onShowToast("Failed to update task priority");
+    } finally {
+      setDraggedTaskId(null);
+    }
+  };
+
   const handleToggleTask = async (taskId: string, currentStatus: boolean) => {
     const newStatus = !currentStatus;
     setTasks(prev => prev.map(t => (t.id === taskId ? { ...t, completed: newStatus, status: newStatus ? "Completed" : "Pending" } : t)));
@@ -139,13 +175,35 @@ export default function ClinicalTasksWidget({
         </div>
       </div>
 
+      {/* Priority Drag & Drop Dropzone Bar */}
+      <div className="grid grid-cols-4 gap-1.5 mb-3 bg-slate-100 dark:bg-slate-800/60 p-1.5 rounded-xl text-[10px] font-bold">
+        {[
+          { key: "High" as const, label: "High Priority", color: "bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300" },
+          { key: "Medium" as const, label: "Medium", color: "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300" },
+          { key: "Low" as const, label: "Low", color: "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300" },
+          { key: "Completed" as const, label: "Completed", color: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300" }
+        ].map(zone => (
+          <div
+            key={zone.key}
+            onDragOver={e => e.preventDefault()}
+            onDrop={e => handleDropPriorityZone(e, zone.key)}
+            className={`py-1.5 px-1 rounded-lg text-center border border-dashed border-slate-300 dark:border-slate-700 cursor-pointer transition-all hover:scale-102 ${zone.color}`}
+            title={`Drag task here to set priority/status to ${zone.label}`}
+          >
+            {zone.label} ({zone.key === "Completed" ? tasks.filter(t => t.completed).length : tasks.filter(t => !t.completed && t.priority === zone.key).length})
+          </div>
+        ))}
+      </div>
+
       {/* Checklist View */}
       {activeTab === "checklist" ? (
         <div className="space-y-2.5 flex-1 overflow-y-auto pr-1">
           {tasks.map(t => (
             <div
               key={t.id}
-              className={`p-3 rounded-xl border transition-all flex items-start justify-between ${
+              draggable
+              onDragStart={e => handleDragStartTask(e, t.id)}
+              className={`p-3 rounded-xl border transition-all flex items-start justify-between cursor-grab active:cursor-grabbing ${
                 t.completed
                   ? "bg-slate-50/60 dark:bg-slate-800/20 border-slate-200 dark:border-slate-800/60 opacity-60"
                   : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-blue-300"

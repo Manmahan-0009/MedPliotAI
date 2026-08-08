@@ -59,6 +59,28 @@ export default function PatientQueueWidget({
     setDraggedId(id);
   };
 
+  const handleDropStatus = async (e: React.DragEvent, targetStatus: string) => {
+    e.preventDefault();
+    const sourceId = e.dataTransfer.getData("queue_id") || draggedId;
+    if (!sourceId) return;
+
+    // Optimistic UI update
+    setQueue(prev =>
+      prev.map(q => (q.id === sourceId ? { ...q, status: targetStatus } : q))
+    );
+
+    try {
+      await doctorService.updateQueueStatus(sourceId, targetStatus);
+      onShowToast(`Patient moved to ${targetStatus}`);
+      onRefresh();
+    } catch (err) {
+      console.error(err);
+      onShowToast("Failed to update queue status");
+    } finally {
+      setDraggedId(null);
+    }
+  };
+
   const handleDrop = async (e: React.DragEvent, targetId: string) => {
     e.preventDefault();
     const sourceId = e.dataTransfer.getData("queue_id") || draggedId;
@@ -165,6 +187,27 @@ export default function PatientQueueWidget({
         <span className="px-3 py-1 bg-blue-50 dark:bg-blue-950/60 text-blue-600 font-bold text-xs rounded-full">
           {queue.filter(q => q.status !== "Completed" && q.status !== "Skipped").length} Active
         </span>
+      </div>
+
+      {/* Status Drag & Drop Quick Zones */}
+      <div className="grid grid-cols-5 gap-1.5 mb-3 bg-slate-100 dark:bg-slate-800/60 p-1.5 rounded-xl text-[10px] font-bold">
+        {[
+          { key: "Waiting", label: "Waiting", color: "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200" },
+          { key: "Ready for Consultation", label: "Ready", color: "bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200" },
+          { key: "In Consultation", label: "Consulting", color: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200" },
+          { key: "Follow-up", label: "Follow-up", color: "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200" },
+          { key: "Completed", label: "Completed", color: "bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-200" }
+        ].map(zone => (
+          <div
+            key={zone.key}
+            onDragOver={e => e.preventDefault()}
+            onDrop={e => handleDropStatus(e, zone.key)}
+            className={`py-1.5 px-1 rounded-lg text-center border border-dashed border-slate-300 dark:border-slate-700 cursor-pointer transition-all hover:scale-102 ${zone.color}`}
+            title={`Drag patient here to set status to ${zone.label}`}
+          >
+            {zone.label} ({queue.filter(q => q.status === zone.key || (zone.key === "Waiting" && (q.status === "Waiting" || q.status === "Scheduled")) || (zone.key === "Ready for Consultation" && q.status === "Checked In")).length})
+          </div>
+        ))}
       </div>
 
       {/* Queue List */}

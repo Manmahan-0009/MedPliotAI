@@ -11,7 +11,7 @@ class LoginRequest(BaseModel):
 
 
 class DoctorSignupRequest(BaseModel):
-    firebase_uid: str
+    firebase_uid: Optional[str] = None
     email: EmailStr
     password: Optional[str] = None
     full_name: str
@@ -19,10 +19,14 @@ class DoctorSignupRequest(BaseModel):
     specialization: Optional[str] = None
     medical_registration_number: Optional[str] = None
     phone: Optional[str] = None
+    experience_years: Optional[int] = None
+    hospital: Optional[str] = None
+    qualification: Optional[str] = None
+    profile_photo: Optional[str] = None
 
 
 class PatientSignupRequest(BaseModel):
-    firebase_uid: str
+    firebase_uid: Optional[str] = None
     email: EmailStr
     password: Optional[str] = None
     first_name: str
@@ -32,6 +36,8 @@ class PatientSignupRequest(BaseModel):
     phone: Optional[str] = None
     blood_group: Optional[str] = None
     address: Optional[str] = None
+    emergency_contact: Optional[str] = None
+    profile_photo: Optional[str] = None
 
 
 class UserProfileOut(BaseModel):

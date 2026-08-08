@@ -37,3 +37,4 @@ frontend/out/
 
 # Misc
 NOTES_LOCAL.md
+*.db

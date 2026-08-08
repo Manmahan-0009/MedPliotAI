@@ -85,6 +85,10 @@ interface AuthContextType {
     specialization?: string;
     medical_registration_number?: string;
     phone?: string;
+    experience_years?: number;
+    hospital?: string;
+    qualification?: string;
+    profile_photo?: string;
   }) => Promise<void>;
   signupPatient: (data: {
     email: string;
@@ -96,6 +100,8 @@ interface AuthContextType {
     phone?: string;
     blood_group?: string;
     address?: string;
+    emergency_contact?: string;
+    profile_photo?: string;
   }) => Promise<void>;
   logout: () => Promise<void>;
   fetchUserProfile: (token: string) => Promise<UserProfile | null>;
@@ -360,6 +366,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     specialization?: string;
     medical_registration_number?: string;
     phone?: string;
+    experience_years?: number;
+    hospital?: string;
+    qualification?: string;
+    profile_photo?: string;
   }) => {
     setLoading(true);
     const cleanEmail = data.email.trim().toLowerCase();
@@ -389,6 +399,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           specialization: data.specialization || null,
           medical_registration_number: data.medical_registration_number || null,
           phone: data.phone || null,
+          experience_years: data.experience_years || null,
+          hospital: data.hospital || null,
+          qualification: data.qualification || null,
+          profile_photo: data.profile_photo || null,
         }),
       });
 
@@ -424,6 +438,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     phone?: string;
     blood_group?: string;
     address?: string;
+    emergency_contact?: string;
+    profile_photo?: string;
   }) => {
     setLoading(true);
     const cleanEmail = data.email.trim().toLowerCase();
@@ -455,6 +471,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           phone: data.phone || null,
           blood_group: data.blood_group || null,
           address: data.address || null,
+          emergency_contact: data.emergency_contact || null,
+          profile_photo: data.profile_photo || null,
         }),
       });
 

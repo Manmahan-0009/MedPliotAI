@@ -78,17 +78,42 @@ export const patientService = {
   getProfileDetails: (): Promise<Patient> =>
     apiFetch("/api/patient/profile"),
 
-  getRecoveryData: (): Promise<RecoveryData> =>
-    apiFetch("/api/patient/recovery"),
+  getRecoveryData: (patientId?: string): Promise<any> =>
+    apiFetch(`/api/patient/recovery${patientId ? `?patient_id=${encodeURIComponent(patientId)}` : ""}`),
 
-  getDischargeData: (): Promise<DischargeData> =>
-    apiFetch("/api/patient/discharge"),
+  getDischargeData: (patientId?: string): Promise<any> =>
+    apiFetch(`/api/patient/discharge${patientId ? `?patient_id=${encodeURIComponent(patientId)}` : ""}`),
 };
 
 // ── Doctor Service ───────────────────────────────────────────────────────────
 export const doctorService = {
   getDashboard: (): Promise<DoctorDashboard> =>
     apiFetch("/api/doctor/dashboard"),
+
+  logRecoveryVitals: (data: any): Promise<any> =>
+    apiFetch("/api/doctor/recovery/log", {
+      method: "POST",
+      body: JSON.stringify(data)
+    }),
+
+  saveDischargeDraft: (data: any): Promise<any> =>
+    apiFetch("/api/doctor/discharge/save", {
+      method: "POST",
+      body: JSON.stringify(data)
+    }),
+
+  approveDischarge: (data: any): Promise<any> =>
+    apiFetch("/api/doctor/discharge/approve", {
+      method: "POST",
+      body: JSON.stringify(data)
+    }),
+
+  getDischarges: (params?: { status?: string; search?: string }): Promise<any> => {
+    const q = new URLSearchParams();
+    if (params?.status) q.append("status", params.status);
+    if (params?.search) q.append("search", params.search);
+    return apiFetch(`/api/doctor/discharges?${q.toString()}`);
+  },
 
   rescheduleAppointment: (appointment_id: string, new_slot: string, new_time?: string, new_date?: string): Promise<any> =>
     apiFetch("/api/doctor/appointments/reschedule", {
@@ -102,6 +127,12 @@ export const doctorService = {
       body: JSON.stringify({ status, completed })
     }),
 
+  updateTaskPriority: (task_id: string, priority: string, status?: string, completed?: boolean): Promise<any> =>
+    apiFetch(`/api/doctor/tasks/${task_id}/priority`, {
+      method: "POST",
+      body: JSON.stringify({ priority, status, completed })
+    }),
+
   getActivityFeed: (filter_type: string = "all"): Promise<any> =>
     apiFetch(`/api/doctor/activity?filter_type=${encodeURIComponent(filter_type)}`),
 
@@ -109,6 +140,12 @@ export const doctorService = {
     apiFetch("/api/doctor/queue/reorder", {
       method: "POST",
       body: JSON.stringify({ queue_ids })
+    }),
+
+  updateQueueStatus: (queue_id: string, status: string, position?: number): Promise<any> =>
+    apiFetch(`/api/doctor/queue/${queue_id}/status`, {
+      method: "POST",
+      body: JSON.stringify({ status, position })
     }),
 
   queueAction: (queue_id: string, action: string): Promise<any> =>
@@ -126,6 +163,70 @@ export const doctorService = {
     apiFetch("/api/doctor/layout-preferences", {
       method: "POST",
       body: JSON.stringify({ widgets })
+    })
+};
+
+// ── Pharmacy Service ────────────────────────────────────────────────────────
+export const pharmacyService = {
+  getPharmacyData: (): Promise<PharmacyData> =>
+    apiFetch("/api/patient/pharmacy"),
+
+  getMedicines: (category?: string): Promise<any[]> =>
+    apiFetch(`/api/pharmacy/medicines${category ? `?category=${category}` : ""}`),
+
+  searchMedicines: (query: string): Promise<any[]> =>
+    apiFetch(`/api/pharmacy/medicines/search?q=${encodeURIComponent(query)}`),
+
+  getSchedule: (patientId: string): Promise<any[]> =>
+    apiFetch(`/api/pharmacy/schedule/${patientId}`),
+
+  getInsights: (patientId: string): Promise<any> =>
+    apiFetch(`/api/pharmacy/patient/${patientId}/insights`),
+
+  getCostOptimization: (patientId: string): Promise<any> =>
+    apiFetch(`/api/pharmacy/patient/${patientId}/cost-optimization`),
+
+  saveCostOptimizationDecision: (data: {
+    patient_id: string;
+    schedule_id?: string;
+    original_medicine: string;
+    generic_alternative: string;
+    active_ingredient: string;
+    brand_cost: number;
+    generic_cost: number;
+    monthly_savings: number;
+    decision: "accepted" | "rejected";
+    doctor_notes?: string;
+  }): Promise<any> =>
+    apiFetch("/api/pharmacy/cost-optimization/decision", {
+      method: "POST",
+      body: JSON.stringify(data)
+    }),
+
+  updateScheduleStatus: (scheduleId: string, status: string): Promise<any> =>
+    apiFetch(`/api/pharmacy/schedule/${scheduleId}/status`, {
+      method: "PUT",
+      body: JSON.stringify({ status })
+    }),
+
+  editMedication: (data: {
+    patient_id: string;
+    schedule_id?: string;
+    action: "add" | "edit" | "remove" | "discontinue" | "pause" | "resume";
+    medicine_name: string;
+    dosage: string;
+    frequency: string;
+    duration?: string;
+    food_instruction?: string;
+    time_slot?: string;
+    notes?: string;
+    refill_instructions?: string;
+    generic_alternative?: string;
+    stock_recommendation?: string;
+  }): Promise<any> =>
+    apiFetch("/api/pharmacy/medication/edit", {
+      method: "POST",
+      body: JSON.stringify(data)
     })
 };
 
@@ -211,12 +312,6 @@ export const prescriptionService = {
     }),
 };
 
-
-// ── Pharmacy Service ─────────────────────────────────────────────────────────
-export const pharmacyService = {
-  getPharmacyData: (): Promise<PharmacyData> =>
-    apiFetch("/api/patient/pharmacy"),
-};
 
 // ── Analytics Service ────────────────────────────────────────────────────────
 export const analyticsService = {

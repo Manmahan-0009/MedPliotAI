@@ -11,6 +11,7 @@ import enum
 class PatientStatus(str, enum.Enum):
     active = "active"
     inactive = "inactive"
+    discharged = "discharged"
 
 
 class Patient(Base):
@@ -29,6 +30,7 @@ class Patient(Base):
     email = Column(String(255), nullable=True, index=True)
     address = Column(Text, nullable=True)
     emergency_contact = Column(String(255), nullable=True)
+    profile_image_url = Column(Text, nullable=True)
     allergies = Column(Text, nullable=True)
     medical_conditions = Column(Text, nullable=True)
     current_medications = Column(Text, nullable=True)

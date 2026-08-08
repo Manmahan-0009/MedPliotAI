@@ -239,6 +239,15 @@ class QueueReorderRequest(BaseModel):
 class QueueActionRequest(BaseModel):
     action: str  # "start" | "skip" | "complete" | "move_up" | "move_down"
 
+class QueueStatusUpdateRequest(BaseModel):
+    status: str  # "Waiting" | "Ready" | "In Consultation" | "Follow-up" | "Completed" | "Skipped"
+    position: Optional[int] = None
+
+class TaskPriorityUpdateRequest(BaseModel):
+    priority: str  # "High" | "Medium" | "Low"
+    status: Optional[str] = None
+    completed: Optional[bool] = None
+
 class LayoutPreferencesRequest(BaseModel):
     widgets: List[dict]
 
@@ -726,6 +735,75 @@ def move_queue_to_top(queue_id: str):
             q["queue_number"] = idx + 1
         return {"message": "Patient queue updated successfully.", "queue": STORE_PATIENT_QUEUE}
     return {"error": "Queue item not found"}
+
+@router.post("/tasks/{task_id}/priority")
+def update_task_priority(task_id: str, req: TaskPriorityUpdateRequest):
+    for t in STORE_TASKS:
+        if t["id"] == task_id:
+            t["priority"] = req.priority # "High", "Medium", "Low"
+            if req.status:
+                t["status"] = req.status
+            if req.completed is not None:
+                t["completed"] = req.completed
+            elif req.priority == "Completed" or req.status == "Completed":
+                t["completed"] = True
+                t["status"] = "Completed"
+            
+            STORE_ACTIVITY_FEED.insert(0, {
+                "id": f"act-{len(STORE_ACTIVITY_FEED)+1}",
+                "time": "Just now",
+                "timestamp": datetime.utcnow().isoformat(),
+                "type": "task",
+                "title": f"Task Priority Set to {req.priority}",
+                "description": f"Task '{t['title']}' moved to {req.priority} priority",
+                "patient_name": t.get("patient_name", "Clinical"),
+                "user": "Dr. Sarah Mitchell",
+                "status": req.priority
+            })
+            return {"message": f"Task priority updated to {req.priority}", "task": t}
+    return {"error": "Task not found"}
+
+@router.post("/queue/{queue_id}/status")
+def update_queue_status(queue_id: str, req: QueueStatusUpdateRequest, db: Session = Depends(get_db)):
+    global STORE_PATIENT_QUEUE
+    target = None
+    for q in STORE_PATIENT_QUEUE:
+        if q["id"] == queue_id:
+            q["status"] = req.status
+            if req.position is not None:
+                q["queue_number"] = req.position
+            target = q
+            break
+
+    if not target:
+        # Create or update fallback item
+        target = {
+            "id": queue_id,
+            "queue_number": req.position or (len(STORE_PATIENT_QUEUE) + 1),
+            "patient_id": queue_id.replace("q-", ""),
+            "patient_name": "Patient",
+            "waiting_time": "5 mins",
+            "appointment_time": "12:00 PM",
+            "priority": "Routine",
+            "type": "Follow-up",
+            "status": req.status
+        }
+        STORE_PATIENT_QUEUE.append(target)
+
+    # Log Activity
+    STORE_ACTIVITY_FEED.insert(0, {
+        "id": f"act-{len(STORE_ACTIVITY_FEED)+1}",
+        "time": "Just now",
+        "timestamp": datetime.utcnow().isoformat(),
+        "type": "queue",
+        "title": f"Patient Queue Status Updated",
+        "description": f"{target.get('patient_name', 'Patient')} moved to {req.status}",
+        "patient_name": target.get('patient_name', 'Patient'),
+        "user": "Dr. Sarah Mitchell",
+        "status": req.status
+    })
+
+    return {"message": "Patient queue status updated successfully.", "queue_item": target, "queue": STORE_PATIENT_QUEUE}
 
 @router.post("/queue/{queue_id}/action")
 def queue_action(queue_id: str, req: QueueActionRequest):

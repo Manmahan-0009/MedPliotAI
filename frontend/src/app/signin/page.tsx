@@ -197,8 +197,16 @@ export default function SignInPage() {
             </motion.button>
           </motion.form>
 
-          <motion.div variants={fadeUp} className="pt-2 border-t border-slate-100 text-center">
-            <Link href="/" className="text-xs text-slate-500 hover:text-slate-800 transition-colors">← Back to Home</Link>
+          <motion.div variants={fadeUp} className="pt-3 border-t border-slate-100 flex flex-col items-center gap-2 text-xs">
+            <p className="text-slate-600 font-medium">
+              Don&apos;t have an account?{" "}
+              <Link href="/signup" className="font-bold text-blue-600 hover:text-blue-700 transition-colors">
+                Create Account
+              </Link>
+            </p>
+            <Link href="/" className="text-slate-400 hover:text-slate-700 transition-colors text-[11px] mt-1">
+              ← Back to Home
+            </Link>
           </motion.div>
         </motion.div>
       </div>

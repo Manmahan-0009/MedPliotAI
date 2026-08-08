@@ -326,11 +326,11 @@ export default function LandingPage() {
 
           <div className="flex items-center gap-3">
             <Link href="/signin" className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">
-              Login
+              Sign In
             </Link>
             <motion.div whileHover={{ y: -1, boxShadow: "0 8px 20px -4px rgb(37 99 235 / 0.35)" }} whileTap={{ scale: 0.97 }}>
-              <Link href="/doctor/login" className="px-4 py-2 rounded-xl text-sm font-bold bg-blue-600 text-white transition-colors">
-                Start Demo
+              <Link href="/signup" className="px-4 py-2 rounded-xl text-sm font-bold bg-blue-600 text-white transition-colors shadow-sm">
+                Sign Up
               </Link>
             </motion.div>
           </div>
@@ -396,9 +396,9 @@ export default function LandingPage() {
 
               <motion.div variants={fadeUp} className="flex flex-wrap items-center gap-3">
                 <motion.div whileHover={{ y: -2, boxShadow: "0 10px 28px -4px rgb(37 99 235 / 0.38)" }} whileTap={{ scale: 0.97 }}>
-                  <Link href="/doctor/login"
+                  <Link href="/signup"
                     className="group inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-blue-600 text-white font-bold text-sm shadow-sm shadow-blue-600/20 transition-colors hover:bg-blue-700">
-                    <span>Start Demo</span>
+                    <span>Create Account</span>
                     <motion.span animate={{ x: [0, 3, 0] }} transition={{ duration: 1.8, repeat: Infinity }}>
                       <ArrowRight className="w-4 h-4" />
                     </motion.span>

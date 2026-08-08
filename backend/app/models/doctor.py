@@ -26,6 +26,8 @@ class Doctor(Base):
     availability_status = Column(String(50), nullable=True, default="Available Today")
     available_slots = Column(Text, nullable=True)   # JSON string of today's slots
 
+    qualification = Column(String(255), nullable=True, default="MBBS, MD")
+    verification_status = Column(String(50), nullable=True, default="Approved")
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
